@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+
+# Flask
+instance/
+*.db
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Frontend env
+frontend/.env
+
+# Backend env
+backend/.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+
+# Vite
+frontend/dist/
+
+# Logs
+*.log
