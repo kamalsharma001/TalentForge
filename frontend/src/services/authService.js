@@ -2,13 +2,13 @@ import api from './api'
 
 const authService = {
   async register(data) {
-    const res = await api.post('/api/auth/register', data)
+    const res = await api.post('/auth/register', data)
     _saveTokens(res.data)
     return res.data
   },
 
   async login(email, password) {
-    const res = await api.post('/api/auth/login', { email, password })
+    const res = await api.post('/auth/login', { email, password })
 
     const { access_token, refresh_token } = res.data
 
@@ -24,17 +24,17 @@ const authService = {
   },
 
   async getMe() {
-    const res = await api.get('/api/auth/me')
+    const res = await api.get('/auth/me')
     return res.data
   },
 
   async logout() {
-    try { await api.post('/api/auth/logout') } catch {}
+    try { await api.post('/auth/logout') } catch {}
     localStorage.clear()
   },
 
   async changePassword(oldPassword, newPassword) {
-    const res = await api.post('/api/auth/change-password', {
+    const res = await api.post('/auth/change-password', {
       old_password: oldPassword,
       new_password: newPassword,
     })
