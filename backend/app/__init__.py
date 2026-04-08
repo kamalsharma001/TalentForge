@@ -33,7 +33,7 @@ def create_app(config_class=None) -> Flask:
 
     CORS(
         app,
-        origins=[app.config["FRONTEND_URL"]],
+        resources={r"/api/*": {"origins": "*"}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
