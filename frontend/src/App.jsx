@@ -24,6 +24,9 @@ import CandidateDashboard from './pages/candidate/CandidateDashboard'
 import CandidateInterviews from './pages/candidate/CandidateInterviews'
 import CandidateReports from './pages/candidate/CandidateReports'
 import CandidateProfile from './pages/candidate/CandidateProfile'
+import MockInterviews from './pages/candidate/MockInterviews'
+import MockInterviewSession from './pages/candidate/MockInterviewSession'
+import PracticeQuestions from './pages/candidate/PracticeQuestions'
 
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -183,6 +186,33 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/candidate/mock-interviews"
+          element={
+            <ProtectedRoute roles={['candidate']}>
+              <MockInterviews />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/candidate/mock-interviews/:id"
+          element={
+            <ProtectedRoute roles={['candidate']}>
+              <MockInterviewSession />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/candidate/practice"
+          element={
+            <ProtectedRoute roles={['candidate']}>
+              <PracticeQuestions />
+            </ProtectedRoute>
+          }
+        />
+        
         <Route
           path="/candidate/notifications"
           element={

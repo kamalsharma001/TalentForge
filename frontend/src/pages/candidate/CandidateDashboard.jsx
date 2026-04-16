@@ -33,6 +33,37 @@ export default function CandidateDashboard() {
           <StatCard label="Reports Ready" value={interviews.filter(iv => iv.status === 'completed').length} icon="📊" variant="amber" />
         </div>
 
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <Link
+            to="/candidate/mock-interviews"
+            className="card flex items-center gap-4 hover:border-forest-300 hover:shadow-card-hover transition-all group"
+          >
+            <div className="w-12 h-12 bg-forest-900 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">
+              🎯
+            </div>
+            <div>
+              <p className="font-display font-semibold text-forest-900">Start Mock Interview</p>
+              <p className="text-forest-500 text-xs mt-0.5">Practice solo with AI-evaluated feedback</p>
+            </div>
+            <span className="ml-auto text-forest-400 group-hover:text-forest-900 transition-colors">→</span>
+          </Link>
+
+          <Link
+            to="/candidate/practice"
+            className="card flex items-center gap-4 hover:border-forest-300 hover:shadow-card-hover transition-all group"
+          >
+            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">
+              📚
+            </div>
+            <div>
+              <p className="font-display font-semibold text-forest-900">Browse Practice Questions</p>
+              <p className="text-forest-500 text-xs mt-0.5">Study by role, difficulty, and category</p>
+            </div>
+            <span className="ml-auto text-forest-400 group-hover:text-forest-900 transition-colors">→</span>
+          </Link>
+        </div>
+        
         {/* Upcoming */}
         <div className="card mb-5">
           <div className="flex items-center justify-between mb-4">

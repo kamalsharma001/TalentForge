@@ -53,6 +53,7 @@ def create_app(config_class=None) -> Flask:
         user, organization, org_member, candidate, resume,
         interviewer, interview, interview_score,
         interview_report, availability_slot, notification,
+        mock_interview, practice_question,
     )
 
     # ── Blueprints ────────────────────────────────────────────────────────────
@@ -63,6 +64,8 @@ def create_app(config_class=None) -> Flask:
     from app.reports.routes import reports_bp
     from app.notifications.routes import notifications_bp
     from app.ai_feedback.routes import ai_feedback_bp
+    from app.mock_interviews.routes import mock_interviews_bp
+    from app.practice.routes import practice_bp
 
     app.register_blueprint(auth_bp,          url_prefix="/api/auth")
     app.register_blueprint(users_bp,         url_prefix="/api/users")
@@ -71,6 +74,8 @@ def create_app(config_class=None) -> Flask:
     app.register_blueprint(reports_bp,       url_prefix="/api/reports")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
     app.register_blueprint(ai_feedback_bp,   url_prefix="/api/feedback")
+    app.register_blueprint(mock_interviews_bp, url_prefix="/api/mock-interviews")
+    app.register_blueprint(practice_bp,        url_prefix="/api/practice")
 
     # ── Global error handlers ─────────────────────────────────────────────────
     from app.utils.errors import register_error_handlers

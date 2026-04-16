@@ -24,10 +24,12 @@ const NAV = {
     { to: '/interviewer/reports',     icon: '📊', label: 'Submit Report' },
   ],
   candidate: [
-    { to: '/candidate',          icon: '⬛', label: 'Overview'   },
-    { to: '/candidate/interviews',icon: '📋', label: 'Interviews'},
-    { to: '/candidate/reports',  icon: '📊', label: 'My Reports' },
-    { to: '/candidate/profile',  icon: '👤', label: 'Profile'    },
+    { to: '/candidate',               icon: '⬛', label: 'Overview'            },
+    { to: '/candidate/interviews',    icon: '📋', label: 'Interviews'          },
+    { to: '/candidate/mock-interviews',icon: '🎯', label: 'Mock Interview'     },
+    { to: '/candidate/practice',      icon: '📚', label: 'Practice Questions'  },
+    { to: '/candidate/reports',       icon: '📊', label: 'My Reports'          },
+    { to: '/candidate/profile',       icon: '👤', label: 'Profile'             },
   ],
 }
 

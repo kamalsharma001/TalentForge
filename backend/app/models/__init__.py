@@ -10,6 +10,8 @@ from app.models.interview_score import InterviewScore
 from app.models.interview_report import InterviewReport, ReportDecision
 from app.models.availability_slot import AvailabilitySlot
 from app.models.notification import Notification
+from app.models.mock_interview import MockInterview, MockInterviewStatus
+from app.models.practice_question import PracticeQuestion
 
 __all__ = [
     "User", "UserRole",
@@ -23,4 +25,6 @@ __all__ = [
     "InterviewReport", "ReportDecision",
     "AvailabilitySlot",
     "Notification",
+    "MockInterview", "MockInterviewStatus",
+    "PracticeQuestion",
 ]
