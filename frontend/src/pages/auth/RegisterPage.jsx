@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
+import Logo from '../../components/ui/Logo'
 
 const ROLES = [
   { value: 'recruiter',   label: 'Recruiter',   icon: '🏢', desc: 'Request interviews for candidates' },
@@ -50,11 +51,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-cream-100 flex items-center justify-center p-6">
       <div className="w-full max-w-lg animate-slide-up">
-        <Link to="/" className="flex items-center gap-2 mb-8">
-          <div className="w-7 h-7 bg-forest-900 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">T</span>
-          </div>
-          <span className="font-display font-bold text-forest-900 text-lg">TalentForge</span>
+        <Link to="/" className="flex items-center mb-8">
+          <Logo size="sm" />
         </Link>
 
         <div className="card shadow-card-hover">

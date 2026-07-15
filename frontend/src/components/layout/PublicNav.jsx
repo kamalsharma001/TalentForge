@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import Logo from '../ui/Logo'
 
 export default function PublicNav() {
 
@@ -40,13 +41,8 @@ export default function PublicNav() {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-forest-900 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold">T</span>
-          </div>
-          <span className="font-display font-bold text-forest-900 text-xl">
-            TalentForge
-          </span>
+        <Link to="/" className="flex items-center">
+          <Logo size="sm" />
         </Link>
 
         {/* Desktop links */}

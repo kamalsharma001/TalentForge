@@ -13,6 +13,8 @@ import {
   ConfirmDialog
 } from "../../components/ui"
 
+import { DashboardHeader, StatsCard, DashboardPanel, QuickActionCard, PanelEmptyState } from "../../components/dashboard/DashboardParts"
+
 import toast from "react-hot-toast"
 import { format } from "date-fns"
 import { Link } from "react-router-dom"
@@ -54,118 +56,125 @@ export function AdminDashboard() {
 
       <div className="max-w-6xl mx-auto animate-fade-in">
 
-        {/* Header */}
-
-        <div className="mb-8">
-          <p className="section-label">Admin</p>
-          <h1 className="font-display text-3xl text-forest-900">
-            Platform Overview
-          </h1>
-        </div>
-
+        <DashboardHeader
+          label="Admin Dashboard"
+          heading="Welcome, Admin 👋"
+          description="Manage platform operations and monitor activity."
+          illustration="admin"
+        />
 
         {/* Stats */}
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
-          <StatCard
-            label="Total Users"
+          <StatsCard
+            title="Total Users"
             value={usersData?.total || 0}
             icon="👥"
+            subtitle="Registered accounts"
             variant="green"
           />
 
-          <StatCard
-            label="Total Interviews"
-            value={interviews.length}
-            icon="📋"
-          />
-
-          <StatCard
-            label="Scheduled Interviews"
+          <StatsCard
+            title="Active Interviews"
             value={scheduledInterviews.length}
             icon="📅"
+            subtitle="Scheduled interviews"
           />
 
-          <StatCard
-            label="Completed Interviews"
+          <StatsCard
+            title="Completed Interviews"
             value={completedInterviews.length}
             icon="✅"
+            subtitle="Interviews completed"
+          />
+
+          <StatsCard
+            title="Platform Activity"
+            value={interviews.length}
+            icon="📊"
+            subtitle="Total interviews"
+            variant="amber"
           />
 
         </div>
 
+        <div className="grid lg:grid-cols-2 gap-5 mb-5">
 
-
-        {/* Pending Interviews */}
-
-        <div className="card">
-
-          <div className="flex items-center justify-between mb-4">
-
-            <h2 className="font-display text-lg text-forest-900">
-              Interviews Awaiting Assignment
-            </h2>
-
-            <Link
-              to="/admin/interviews"
-              className="text-forest-600 text-sm hover:text-forest-900"
-            >
-              View all →
-            </Link>
-
-          </div>
-
-
-          {pendingInterviews.length === 0 ? (
-
-            <EmptyState
-              icon="📋"
-              title="No interviews waiting for assignment"
-            />
-
-          ) : (
-
-            <div className="space-y-2">
-
-              {pendingInterviews.slice(0,5).map(iv => (
-
-                <div
-                  key={iv.id}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream-50"
-                >
-
-                  <div className="flex-1 min-w-0">
-
-                    <p className="text-sm font-medium text-forest-900">
-                      {iv.title}
-                    </p>
-
-                    <p className="text-xs text-forest-400">
-                      {iv.job_role || "—"}
-                    </p>
-
+          {/* Recent Activity */}
+          <DashboardPanel title="Recent Activity" actionLabel="View all" actionTo="/admin/interviews">
+            {interviews.length === 0 ? (
+              <PanelEmptyState icon="📊" title="No activity yet" description="Platform activity will show up here" />
+            ) : (
+              <div className="space-y-2">
+                {interviews.slice(0, 5).map(iv => (
+                  <div key={iv.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream-50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-forest-900 truncate">{iv.title}</p>
+                      <p className="text-xs text-forest-400">{iv.job_role || "—"}</p>
+                    </div>
+                    <StatusBadge status={cleanStatus(iv.status)} />
                   </div>
+                ))}
+              </div>
+            )}
+          </DashboardPanel>
 
-                  <StatusBadge status={cleanStatus(iv.status)} />
+          {/* Pending Assignments */}
+          <DashboardPanel title="Pending Assignments" actionLabel="View all" actionTo="/admin/interviews">
+            {pendingInterviews.length === 0 ? (
+              <PanelEmptyState
+                icon="📋"
+                title="No interviews waiting for assignment"
+              />
+            ) : (
+              <div className="space-y-2">
+                {pendingInterviews.slice(0, 5).map(iv => (
+                  <div
+                    key={iv.id}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream-50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-forest-900 truncate">
+                        {iv.title}
+                      </p>
+                      <p className="text-xs text-forest-400">
+                        {iv.job_role || "—"}
+                      </p>
+                    </div>
 
-                  {cleanStatus(iv.status) === "pending" && (
-                    <Link
-                      to={`/interviews/${iv.id}`}
-                      className="text-xs bg-forest-900 text-white px-3 py-1.5 rounded-full hover:bg-forest-800"
-                    >
-                      Assign
-                    </Link>
-                  )}
+                    <StatusBadge status={cleanStatus(iv.status)} />
 
-                </div>
+                    {cleanStatus(iv.status) === "pending" && (
+                      <Link
+                        to={`/interviews/${iv.id}`}
+                        className="text-xs bg-forest-900 text-white px-3 py-1.5 rounded-full hover:bg-forest-800 flex-shrink-0"
+                      >
+                        Assign
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </DashboardPanel>
 
-              ))}
+        </div>
 
-            </div>
-
-          )}
-
+        <div className="grid sm:grid-cols-2 gap-4">
+          <QuickActionCard
+            to="/admin/users"
+            icon="👥"
+            title="Manage Users"
+            description="View, promote, or deactivate platform users."
+          />
+          <QuickActionCard
+            to="/admin/interviews"
+            icon="📋"
+            title="View Interviews"
+            description="Review and assign all platform interviews."
+            tone="amber"
+          />
         </div>
 
       </div>

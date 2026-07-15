@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
+import Logo from '../../components/ui/Logo'
 
 const ROLE_DASHBOARDS = {
   admin: '/admin',
@@ -77,11 +78,8 @@ export default function LoginPage() {
       {/* Left Panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-forest-900 flex-col justify-between p-12">
 
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold">T</span>
-          </div>
-          <span className="font-bold text-white text-xl">TalentForge</span>
+        <Link to="/" className="flex items-center">
+          <Logo size="sm" tone="onDark" />
         </Link>
 
         <div>

@@ -3,7 +3,8 @@ import { useEffect } from 'react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useAuth } from '../../context/AuthContext'
 import { useInterviews } from '../../hooks'
-import { StatCard, EmptyState, PageSpinner } from '../../components/ui'
+import { PageSpinner } from '../../components/ui'
+import { DashboardHeader, StatsCard, DashboardPanel, QuickActionCard, PanelEmptyState } from '../../components/dashboard/DashboardParts'
 import { format } from 'date-fns'
 import api from '../../services/api.js'
 
@@ -18,65 +19,50 @@ export default function CandidateDashboard() {
       .catch(err => console.log("API ERROR:", err.response || err))
   }, [])
 
+  const upcoming = interviews.filter(iv => iv.status === 'scheduled')
+  const completed = interviews.filter(iv => iv.status === 'completed')
+
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto animate-fade-in">
-        <div className="mb-8">
-          <p className="section-label">Candidate</p>
-          <h1 className="font-display text-3xl text-forest-900">Hello, {user?.first_name} 👋</h1>
+      <div className="max-w-6xl mx-auto animate-fade-in">
+        <DashboardHeader
+          label="Candidate"
+          heading={`Welcome, ${user?.first_name} 👋`}
+          description="Track your interview journey."
+          illustration="candidate"
+        />
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatsCard icon="📋" value={data?.total || 0} title="Total Interviews" subtitle="All your interviews" variant="green" />
+          <StatsCard icon="📅" value={upcoming.length} title="Upcoming" subtitle="Interviews scheduled" />
+          <StatsCard icon="✅" value={completed.length} title="Completed" subtitle="Interviews completed" />
+          <StatsCard icon="📊" value={completed.length} title="Feedback Received" subtitle="Reports available" variant="amber" />
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total Interviews" value={data?.total || 0} icon="📋" variant="green" />
-          <StatCard label="Upcoming" value={interviews.filter(iv => iv.status === 'scheduled').length} icon="📅" />
-          <StatCard label="Completed" value={interviews.filter(iv => iv.status === 'completed').length} icon="✅" />
-          <StatCard label="Reports Ready" value={interviews.filter(iv => iv.status === 'completed').length} icon="📊" variant="amber" />
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <Link
+        <div className="grid sm:grid-cols-2 gap-4 mb-5">
+          <QuickActionCard
             to="/candidate/mock-interviews"
-            className="card flex items-center gap-4 hover:border-forest-300 hover:shadow-card-hover transition-all group"
-          >
-            <div className="w-12 h-12 bg-forest-900 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">
-              🎯
-            </div>
-            <div>
-              <p className="font-display font-semibold text-forest-900">Start Mock Interview</p>
-              <p className="text-forest-500 text-xs mt-0.5">Practice solo with AI-evaluated feedback</p>
-            </div>
-            <span className="ml-auto text-forest-400 group-hover:text-forest-900 transition-colors">→</span>
-          </Link>
-
-          <Link
+            icon="🎯"
+            title="Start Mock Interview"
+            description="Practice solo with AI-evaluated feedback"
+          />
+          <QuickActionCard
             to="/candidate/practice"
-            className="card flex items-center gap-4 hover:border-forest-300 hover:shadow-card-hover transition-all group"
-          >
-            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform">
-              📚
-            </div>
-            <div>
-              <p className="font-display font-semibold text-forest-900">Browse Practice Questions</p>
-              <p className="text-forest-500 text-xs mt-0.5">Study by role, difficulty, and category</p>
-            </div>
-            <span className="ml-auto text-forest-400 group-hover:text-forest-900 transition-colors">→</span>
-          </Link>
+            icon="📚"
+            title="Browse Practice Questions"
+            description="Study by role, difficulty, and category"
+            tone="amber"
+          />
         </div>
-        
-        {/* Upcoming */}
-        <div className="card mb-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl text-forest-900">Upcoming Interviews</h2>
-            <Link to="/candidate/interviews" className="text-forest-600 text-sm hover:text-forest-900">View all →</Link>
-          </div>
-          {loading ? <PageSpinner /> : (
-            interviews.filter(iv => iv.status === 'scheduled').length === 0 ? (
-              <EmptyState icon="📅" title="No upcoming interviews" description="Your recruiter will schedule one soon" />
+
+        <div className="mb-5">
+          <DashboardPanel title="Upcoming Interviews" actionLabel="View all" actionTo="/candidate/interviews">
+            {loading ? <PageSpinner /> : upcoming.length === 0 ? (
+              <PanelEmptyState icon="📅" title="No upcoming interviews" description="Your recruiter will schedule one soon" />
             ) : (
-              <div className="space-y-3">
-                {interviews.filter(iv => iv.status === 'scheduled').map(iv => (
-                  <div key={iv.id} className="flex items-center gap-4 p-4 rounded-xl border border-forest-200 bg-forest-50">
+              <div className="space-y-2">
+                {upcoming.map(iv => (
+                  <div key={iv.id} className="flex items-center gap-4 p-3 rounded-xl border border-forest-200 bg-forest-50">
                     <div className="w-10 h-10 bg-forest-900 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                       {iv.scheduled_at ? format(new Date(iv.scheduled_at), 'd') : '?'}
                     </div>
@@ -93,11 +79,33 @@ export default function CandidateDashboard() {
                   </div>
                 ))}
               </div>
-            )
-          )}
+            )}
+          </DashboardPanel>
         </div>
 
-        {/* Tips */}
+        <div className="mb-5">
+          <DashboardPanel title="Latest Feedback" actionLabel="View all" actionTo="/candidate/reports">
+            {completed.length === 0 ? (
+              <PanelEmptyState icon="💬" title="No feedback yet" description="Feedback appears here after your interviews are completed" />
+            ) : (
+              <div className="space-y-2">
+                {completed.map(iv => (
+                  <Link key={iv.id} to={`/reports/${iv.id}`}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream-50 transition-colors">
+                    <span className="text-forest-500 text-lg">💬</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-forest-900 text-sm truncate">{iv.title}</p>
+                      <p className="text-forest-500 text-xs">
+                        {iv.scheduled_at ? format(new Date(iv.scheduled_at), 'MMM d, yyyy') : ''}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </DashboardPanel>
+        </div>
+
         <div className="card-yellow border-amber-200">
           <h3 className="font-display text-lg text-forest-900 mb-3">Interview tips 💡</h3>
           <ul className="space-y-2 text-sm text-forest-700">
