@@ -77,6 +77,21 @@ export function AuthProvider({ children }) {
 
   }, [])
 
+  // Used after a successful Google OAuth exchange (see AuthCallbackPage) —
+  // the backend has already returned the same {access_token, refresh_token,
+  // user} shape as login()/register(), this just applies it to app state.
+  const setSessionFromAuthPayload = useCallback((data) => {
+    if (data.access_token) {
+      localStorage.setItem('access_token', data.access_token)
+    }
+    if (data.refresh_token) {
+      localStorage.setItem('refresh_token', data.refresh_token)
+    }
+    setUser(data.user)
+    setLoading(false)
+    return data.user
+  }, [])
+
   // LOGOUT
   const logout = useCallback(async () => {
 
@@ -110,7 +125,8 @@ export function AuthProvider({ children }) {
         login,
         register,
         logout,
-        refreshUser
+        refreshUser,
+        setSessionFromAuthPayload
       }}
     >
       {children}

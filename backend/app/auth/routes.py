@@ -12,13 +12,17 @@ from app.schemas.user_schema import (
     UserRegistrationSchema,
     UserLoginSchema,
     UserSchema,
+    OAuthGoogleStartSchema,
+    OAuthGoogleCompleteSchema,
 )
 from app.services.auth_service import AuthService
 from app.utils.errors import ValidationError as AppValidationError
 
-_reg_schema    = UserRegistrationSchema()
-_login_schema  = UserLoginSchema()
-_user_schema   = UserSchema()
+_reg_schema      = UserRegistrationSchema()
+_login_schema    = UserLoginSchema()
+_user_schema     = UserSchema()
+_oauth_start_schema    = OAuthGoogleStartSchema()
+_oauth_complete_schema = OAuthGoogleCompleteSchema()
 
 
 # ── POST /api/auth/register ───────────────────────────────────────────────────
@@ -43,6 +47,48 @@ def login():
     data = _login_schema.load(request.get_json())
     result = AuthService.login(data["email"], data["password"])
     return jsonify(result), 200
+
+
+# ── POST /api/auth/oauth/google ───────────────────────────────────────────────
+@auth_bp.post("/oauth/google")
+def oauth_google():
+    """
+    Step 1 of "Continue with Google". Body: { supabase_access_token }.
+
+    Returns the normal login token payload if the Google email already
+    matches an existing account, otherwise {"needs_registration": true, ...}
+    so the client can collect a role and finish signup.
+    """
+    errors = _oauth_start_schema.validate(request.get_json(silent=True) or {})
+    if errors:
+        return jsonify({"errors": errors}), 422
+
+    data = _oauth_start_schema.load(request.get_json())
+    result = AuthService.oauth_google_start(data["supabase_access_token"])
+    return jsonify(result), 200
+
+
+# ── POST /api/auth/oauth/google/complete ──────────────────────────────────────
+@auth_bp.post("/oauth/google/complete")
+def oauth_google_complete():
+    """
+    Step 2 of "Continue with Google" — creates the account with a
+    user-chosen role (never hardcoded) after oauth_google reported
+    needs_registration.
+    """
+    errors = _oauth_complete_schema.validate(request.get_json(silent=True) or {})
+    if errors:
+        return jsonify({"errors": errors}), 422
+
+    data = _oauth_complete_schema.load(request.get_json())
+    result = AuthService.oauth_google_complete(
+        supabase_access_token=data["supabase_access_token"],
+        role=data["role"],
+        first_name=data.get("first_name"),
+        last_name=data.get("last_name"),
+        phone=data.get("phone"),
+    )
+    return jsonify(result), 201
 
 
 # ── POST /api/auth/refresh ────────────────────────────────────────────────────

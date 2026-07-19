@@ -54,6 +54,23 @@ class UserLoginSchema(Schema):
     password = fields.Str(required=True, load_only=True)
 
 
+class OAuthGoogleStartSchema(Schema):
+    """Input schema for POST /api/auth/oauth/google."""
+    supabase_access_token = fields.Str(required=True, load_only=True)
+
+
+class OAuthGoogleCompleteSchema(Schema):
+    """Input schema for POST /api/auth/oauth/google/complete."""
+    supabase_access_token = fields.Str(required=True, load_only=True)
+    role       = fields.Str(
+        required=True,
+        validate=validate.OneOf(["recruiter", "interviewer", "candidate"]),
+    )
+    first_name = fields.Str(validate=validate.Length(min=1, max=100), allow_none=True)
+    last_name  = fields.Str(validate=validate.Length(min=1, max=100), allow_none=True)
+    phone      = fields.Str(allow_none=True)
+
+
 class UserUpdateSchema(Schema):
     """Input schema for PATCH /api/users/me."""
     first_name = fields.Str(validate=validate.Length(min=1, max=100))

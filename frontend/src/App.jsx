@@ -6,6 +6,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+import AuthCallbackPage from './pages/auth/AuthCallbackPage'
 
 // Recruiter pages
 import RecruiterDashboard from './pages/recruiter/RecruiterDashboard'
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
         {/* Recruiter */}
         <Route path="/recruiter" element={<Navigate to="/recruiter/dashboard" replace />} />
