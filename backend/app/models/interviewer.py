@@ -8,53 +8,55 @@ from datetime import datetime, timezone
 
 from sqlalchemy.dialects.postgresql import UUID
 
-from app import db
+from app.database import Base
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, Numeric, Enum as SAEnum, CheckConstraint, ARRAY, Table
+from sqlalchemy.orm import relationship
 
 
-class Interviewer(db.Model):
+class Interviewer(Base):
     __tablename__ = "interviewers"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    user_id = db.Column(
+    user_id = Column(
         UUID(as_uuid=True),
-        db.ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
         index=True,
     )
 
     # ── Expertise ─────────────────────────────────────────────────────────
-    domains          = db.Column(db.ARRAY(db.String))    # ["Backend","System Design"]
-    tech_stack       = db.Column(db.ARRAY(db.String))    # ["Python","AWS","PostgreSQL"]
-    years_of_exp     = db.Column(db.Integer)
-    current_company  = db.Column(db.String(150))
-    current_title    = db.Column(db.String(150))
-    bio              = db.Column(db.Text)
-    linkedin_url     = db.Column(db.String(255))
+    domains          = Column(ARRAY(String))    # ["Backend","System Design"]
+    tech_stack       = Column(ARRAY(String))    # ["Python","AWS","PostgreSQL"]
+    years_of_exp     = Column(Integer)
+    current_company  = Column(String(150))
+    current_title    = Column(String(150))
+    bio              = Column(Text)
+    linkedin_url     = Column(String(255))
 
     # ── Platform stats ────────────────────────────────────────────────────
-    total_interviews = db.Column(db.Integer, default=0, nullable=False)
-    avg_rating       = db.Column(db.Numeric(3, 2))       # 0.00–5.00
-    is_available     = db.Column(db.Boolean, default=True, nullable=False)
-    is_approved      = db.Column(db.Boolean, default=False, nullable=False)  # admin approval
+    total_interviews = Column(Integer, default=0, nullable=False)
+    avg_rating       = Column(Numeric(3, 2))       # 0.00–5.00
+    is_available     = Column(Boolean, default=True, nullable=False)
+    is_approved      = Column(Boolean, default=False, nullable=False)  # admin approval
 
-    created_at = db.Column(
-        db.DateTime(timezone=True),
+    created_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    updated_at = db.Column(
-        db.DateTime(timezone=True),
+    updated_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
     # ── Relationships ─────────────────────────────────────────────────────
-    user               = db.relationship("User",             back_populates="interviewer_profile")
-    availability_slots = db.relationship("AvailabilitySlot", back_populates="interviewer", cascade="all, delete-orphan")
-    interviews         = db.relationship("Interview",        back_populates="interviewer")
+    user               = relationship("User",             back_populates="interviewer_profile")
+    availability_slots = relationship("AvailabilitySlot", back_populates="interviewer", cascade="all, delete-orphan")
+    interviews         = relationship("Interview",        back_populates="interviewer")
 
     def __repr__(self) -> str:
         return f"<Interviewer user={self.user_id}>"

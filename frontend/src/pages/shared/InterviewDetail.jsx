@@ -46,8 +46,7 @@ export default function InterviewDetail() {
   const cleanStatus = status => status?.split(".").pop()
 
   /* Permission logic */
-  console.log("role:", user?.role)
-  console.log("status:", interview?.status)
+
 
   
   const role = user?.role?.split(".").pop()?.toLowerCase()
@@ -82,7 +81,7 @@ export default function InterviewDetail() {
     setAssigning(true)
 
     try {
-      console.log("Assign payload:", assignForm)
+
       await interviewService.assign(id, assignForm)
 
       toast.success("Interviewer assigned")

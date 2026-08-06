@@ -11,7 +11,9 @@ from datetime import datetime, timezone
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 
-from app import db
+from app.database import Base
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, Numeric, Enum as SAEnum, CheckConstraint, ARRAY, Table
+from sqlalchemy.orm import relationship
 
 
 class ReportDecision(str, enum.Enum):
@@ -20,58 +22,58 @@ class ReportDecision(str, enum.Enum):
     no_hire = "no_hire"
 
 
-class InterviewReport(db.Model):
+class InterviewReport(Base):
     __tablename__ = "interview_reports"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    interview_id = db.Column(
+    interview_id = Column(
         UUID(as_uuid=True),
-        db.ForeignKey("interviews.id", ondelete="CASCADE"),
+        ForeignKey("interviews.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
         index=True,
     )
 
     # ── Interviewer-written content ───────────────────────────────────────
-    summary          = db.Column(db.Text)           # overall narrative
-    strengths        = db.Column(db.Text)
-    weaknesses       = db.Column(db.Text)
-    recommendation   = db.Column(db.Text)
-    private_notes    = db.Column(db.Text)           # not shown to candidate
+    summary          = Column(Text)           # overall narrative
+    strengths        = Column(Text)
+    weaknesses       = Column(Text)
+    recommendation   = Column(Text)
+    private_notes    = Column(Text)           # not shown to candidate
 
     # ── AI-generated content ──────────────────────────────────────────────
-    ai_summary       = db.Column(db.Text)
-    ai_strengths     = db.Column(db.Text)
-    ai_weaknesses    = db.Column(db.Text)
-    ai_generated_at  = db.Column(db.DateTime(timezone=True))
+    ai_summary       = Column(Text)
+    ai_strengths     = Column(Text)
+    ai_weaknesses    = Column(Text)
+    ai_generated_at  = Column(DateTime(timezone=True))
 
     # ── Decision ──────────────────────────────────────────────────────────
-    decision = db.Column(
+    decision = Column(
         SAEnum(ReportDecision, name="report_decision", create_type=True),
         nullable=True,
     )
-    overall_score    = db.Column(db.Numeric(4, 2))  # computed aggregate
+    overall_score    = Column(Numeric(4, 2))  # computed aggregate
 
     # ── Visibility ────────────────────────────────────────────────────────
-    is_published     = db.Column(db.Boolean, default=False, nullable=False)
-    published_at     = db.Column(db.DateTime(timezone=True))
+    is_published     = Column(Boolean, default=False, nullable=False)
+    published_at     = Column(DateTime(timezone=True))
 
     # ── Timestamps ────────────────────────────────────────────────────────
-    created_at = db.Column(
-        db.DateTime(timezone=True),
+    created_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    updated_at = db.Column(
-        db.DateTime(timezone=True),
+    updated_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
     # ── Relationships ─────────────────────────────────────────────────────
-    interview = db.relationship("Interview", back_populates="report")
+    interview = relationship("Interview", back_populates="report")
 
     def __repr__(self) -> str:
         return f"<InterviewReport interview={self.interview_id} decision={self.decision}>"

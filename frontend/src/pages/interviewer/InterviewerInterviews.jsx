@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useInterviews } from '../../hooks'
 import { StatusBadge, EmptyState, PageSpinner } from '../../components/ui'
 import { format } from 'date-fns'
 
 export default function InterviewerInterviews() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState('')
   const { data, loading } = useInterviews({ status: status || undefined, per_page: 20 })
   const interviews = data?.items || []
@@ -36,8 +37,8 @@ export default function InterviewerInterviews() {
           ) : (
             <div className="space-y-3">
               {interviews.map(iv => (
-                <Link key={iv.id} to={`/interviews/${iv.id}`}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-cream-200 hover:border-forest-300 hover:bg-cream-50 transition-colors">
+                <div key={iv.id} onClick={() => navigate(`/interviews/${iv.id}`)}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-cream-200 hover:border-forest-300 hover:bg-cream-50 transition-colors cursor-pointer">
                   <div className="w-10 h-10 bg-forest-900 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                     {(iv.tech_stack?.[0] || 'T').slice(0,2).toUpperCase()}
                   </div>
@@ -65,7 +66,7 @@ export default function InterviewerInterviews() {
                       </Link>
                     )}
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           )}

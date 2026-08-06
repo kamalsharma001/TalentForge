@@ -1,27 +1,25 @@
 """
 SchedulingService — availability slot management and interviewer matching.
+Fully native FastAPI and legacy SQLAlchemy ORM service.
 """
 
 from datetime import datetime, timezone, timedelta
 from typing import Optional
-
-from app import db
+from sqlalchemy.orm import Session
 from app.models.availability_slot import AvailabilitySlot
 from app.models.interviewer import Interviewer
-from app.schemas.availability_schema import AvailabilitySlotSchema
+from app.schemas.availability_schema import AvailabilitySlotResponse
 from app.utils.errors import NotFoundError, ConflictError, ForbiddenError, ValidationError
 from app.utils.pagination import paginate_query
-
-_schema      = AvailabilitySlotSchema()
-_schema_list = AvailabilitySlotSchema(many=True)
-
 
 class SchedulingService:
 
     # ── Add slot ──────────────────────────────────────────────────────────
     @staticmethod
-    def add_slot(data: dict, interviewer_user_id: str) -> dict:
-        interviewer = Interviewer.query.filter_by(user_id=interviewer_user_id).first()
+    def add_slot(db: Session, data: dict, interviewer_user_id: str) -> dict:
+        interviewer = db.query(Interviewer).filter(
+            Interviewer.user_id == interviewer_user_id
+        ).first()
         if not interviewer:
             raise NotFoundError("Interviewer profile not found.")
 
@@ -36,11 +34,11 @@ class SchedulingService:
             raise ValidationError("Slot must be at least 15 minutes long.")
 
         # Overlap check
-        overlap = AvailabilitySlot.query.filter(
+        overlap = db.query(AvailabilitySlot).filter(
             AvailabilitySlot.interviewer_id == interviewer.id,
-            AvailabilitySlot.is_booked == False,   # noqa: E712
+            AvailabilitySlot.is_booked == False,
             AvailabilitySlot.start_time < end,
-            AvailabilitySlot.end_time   > start,
+            AvailabilitySlot.end_time > start,
         ).first()
         if overlap:
             raise ConflictError("This slot overlaps with an existing availability window.")
@@ -53,18 +51,21 @@ class SchedulingService:
             is_recurring=data.get("is_recurring", False),
             recurrence_rule=data.get("recurrence_rule"),
         )
-        db.session.add(slot)
-        db.session.commit()
-        return _schema.dump(slot)
+        db.add(slot)
+        db.commit()
+        db.refresh(slot)
+        return AvailabilitySlotResponse.model_validate(slot).model_dump()
 
     # ── Delete slot ───────────────────────────────────────────────────────
     @staticmethod
-    def delete_slot(slot_id: str, interviewer_user_id: str) -> None:
-        interviewer = Interviewer.query.filter_by(user_id=interviewer_user_id).first()
+    def delete_slot(db: Session, slot_id: str, interviewer_user_id: str) -> None:
+        interviewer = db.query(Interviewer).filter(
+            Interviewer.user_id == interviewer_user_id
+        ).first()
         if not interviewer:
             raise NotFoundError("Interviewer profile not found.")
 
-        slot = AvailabilitySlot.query.get(slot_id)
+        slot = db.query(AvailabilitySlot).get(slot_id)
         if not slot:
             raise NotFoundError("Slot not found.")
         if str(slot.interviewer_id) != str(interviewer.id):
@@ -72,12 +73,13 @@ class SchedulingService:
         if slot.is_booked:
             raise ConflictError("Cannot delete a booked slot.")
 
-        db.session.delete(slot)
-        db.session.commit()
+        db.delete(slot)
+        db.commit()
 
     # ── List slots ────────────────────────────────────────────────────────
     @staticmethod
     def list_slots(
+        db: Session,
         *,
         interviewer_id: Optional[str] = None,
         from_date: Optional[datetime] = None,
@@ -86,23 +88,36 @@ class SchedulingService:
         page: int = 1,
         per_page: int = 20,
     ) -> dict:
-        q = AvailabilitySlot.query
+        query = db.query(AvailabilitySlot)
 
         if interviewer_id:
-            q = q.filter_by(interviewer_id=interviewer_id)
+            query = query.filter(AvailabilitySlot.interviewer_id == interviewer_id)
         if available_only:
-            q = q.filter_by(is_booked=False)
+            query = query.filter(AvailabilitySlot.is_booked == False)
         if from_date:
-            q = q.filter(AvailabilitySlot.start_time >= from_date)
+            query = query.filter(AvailabilitySlot.start_time >= from_date)
         if to_date:
-            q = q.filter(AvailabilitySlot.end_time <= to_date)
+            query = query.filter(AvailabilitySlot.end_time <= to_date)
 
-        q = q.order_by(AvailabilitySlot.start_time.asc())
-        return paginate_query(q, page, per_page, _schema)
+        query = query.order_by(AvailabilitySlot.start_time.asc())
+
+        res = paginate_query(query, page, per_page)
+        # Serialize response items
+        items_serialized = [AvailabilitySlotResponse.model_validate(item).model_dump() for item in res["items"]]
+        return {
+            "items":    items_serialized,
+            "total":    res["total"],
+            "page":     res["page"],
+            "pages":    res["pages"],
+            "per_page": res["per_page"],
+            "has_next": res["has_next"],
+            "has_prev": res["has_prev"],
+        }
 
     # ── Find matching interviewers ────────────────────────────────────────
     @staticmethod
     def find_available_interviewers(
+        db: Session,
         *,
         tech_stack: list,
         requested_at: datetime,
@@ -115,31 +130,25 @@ class SchedulingService:
         end_time = requested_at + timedelta(minutes=duration_mins)
 
         # Find interviewers with a qualifying slot
-        slots = (
-            AvailabilitySlot.query
-            .filter(
-                AvailabilitySlot.is_booked == False,   # noqa: E712
-                AvailabilitySlot.start_time <= requested_at,
-                AvailabilitySlot.end_time   >= end_time,
-            )
-            .all()
-        )
+        slots = db.query(AvailabilitySlot).filter(
+            AvailabilitySlot.is_booked == False,
+            AvailabilitySlot.start_time <= requested_at,
+            AvailabilitySlot.end_time >= end_time,
+        ).all()
 
         interviewer_ids = {slot.interviewer_id for slot in slots}
         if not interviewer_ids:
             return []
 
-        query = Interviewer.query.filter(
+        query = db.query(Interviewer).filter(
             Interviewer.id.in_(interviewer_ids),
-            Interviewer.is_approved == True,     # noqa: E712
-            Interviewer.is_available == True,    # noqa: E712
+            Interviewer.is_approved == True,
+            Interviewer.is_available == True,
         )
 
         # Filter by tech stack if provided (PostgreSQL array overlap)
         if tech_stack:
-            query = query.filter(
-                Interviewer.tech_stack.overlap(tech_stack)
-            )
+            query = query.filter(Interviewer.tech_stack.overlap(tech_stack))
 
         interviewers = query.all()
 

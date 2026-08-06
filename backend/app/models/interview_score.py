@@ -9,46 +9,48 @@ from datetime import datetime, timezone
 
 from sqlalchemy.dialects.postgresql import UUID
 
-from app import db
+from app.database import Base
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, Numeric, Enum as SAEnum, CheckConstraint, ARRAY, Table, UniqueConstraint
+from sqlalchemy.orm import relationship
 
 
-class InterviewScore(db.Model):
+class InterviewScore(Base):
     __tablename__ = "interview_scores"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    interview_id = db.Column(
+    interview_id = Column(
         UUID(as_uuid=True),
-        db.ForeignKey("interviews.id", ondelete="CASCADE"),
+        ForeignKey("interviews.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    interviewer_id = db.Column(
+    interviewer_id = Column(
         UUID(as_uuid=True),
-        db.ForeignKey("interviewers.id", ondelete="CASCADE"),
+        ForeignKey("interviewers.id", ondelete="CASCADE"),
         nullable=False,
     )
 
     # ── Scoring ───────────────────────────────────────────────────────────
-    dimension    = db.Column(db.String(100), nullable=False)  # "Problem Solving"
-    score        = db.Column(db.Integer, nullable=False)      # 1–10
-    max_score    = db.Column(db.Integer, default=10, nullable=False)
-    notes        = db.Column(db.Text)
+    dimension    = Column(String(100), nullable=False)  # "Problem Solving"
+    score        = Column(Integer, nullable=False)      # 1–10
+    max_score    = Column(Integer, default=10, nullable=False)
+    notes        = Column(Text)
 
-    created_at = db.Column(
-        db.DateTime(timezone=True),
+    created_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
     __table_args__ = (
-        db.UniqueConstraint("interview_id", "dimension", name="uq_score_dimension"),
-        db.CheckConstraint("score >= 1 AND score <= max_score", name="ck_score_range"),
+        UniqueConstraint("interview_id", "dimension", name="uq_score_dimension"),
+        CheckConstraint("score >= 1 AND score <= max_score", name="ck_score_range"),
     )
 
     # ── Relationships ─────────────────────────────────────────────────────
-    interview   = db.relationship("Interview",   back_populates="scores")
-    interviewer = db.relationship("Interviewer")
+    interview   = relationship("Interview",   back_populates="scores")
+    interviewer = relationship("Interviewer")
 
     def __repr__(self) -> str:
         return f"<InterviewScore {self.dimension}={self.score}/{self.max_score}>"

@@ -1,36 +1,27 @@
 """
 MockInterviewService — handles mock interview session lifecycle.
-
-Features:
-1. Creates a new session with a question from the practice bank (or fallback)
-2. Lists sessions for a candidate with pagination
-3. Retrieves single session
-4. Submits candidate answer and marks session in_progress
+Fully native FastAPI and legacy SQLAlchemy ORM service.
 """
 
 import logging
 import random
-
-from app import db
+from sqlalchemy.orm import Session
 from app.models.mock_interview import MockInterview, MockInterviewStatus
 from app.models.practice_question import PracticeQuestion
 from app.models.candidate import Candidate
 from app.utils.errors import NotFoundError, ValidationError
 from app.utils.pagination import paginate_query
-from app.schemas.mock_interview_schema import MockInterviewSchema
-
+from app.schemas.mock_interview_schema import MockInterviewResponse
 from app.templates.mock_interview_templates import FALLBACK_QUESTIONS
 
 logger = logging.getLogger(__name__)
 
-
 class MockInterviewService:
 
     @staticmethod
-    def create(user_id: str, data: dict) -> dict:
+    def create(db: Session, user_id: str, data: dict) -> dict:
         """Create a new mock interview session for the authenticated candidate."""
-
-        candidate = Candidate.query.filter_by(user_id=user_id).first()
+        candidate = db.query(Candidate).filter(Candidate.user_id == user_id).first()
         if not candidate:
             raise NotFoundError("Candidate profile not found.")
 
@@ -40,10 +31,10 @@ class MockInterviewService:
         duration   = data.get("duration_mins", 30)
 
         # Try to find a matching practice question
-        query = PracticeQuestion.query.filter_by(
-            is_active=True,
-            difficulty=difficulty,
-            category=category,
+        query = db.query(PracticeQuestion).filter(
+            PracticeQuestion.is_active == True,
+            PracticeQuestion.difficulty == difficulty,
+            PracticeQuestion.category == category,
         )
         if job_role:
             query = query.filter(PracticeQuestion.job_role.ilike(f"%{job_role}%"))
@@ -54,10 +45,8 @@ class MockInterviewService:
         if practice_question:
             question_text = practice_question.question
             practice_question_id = practice_question.id
-            # Use the practice question's job_role if candidate didn't specify
             job_role = job_role or practice_question.job_role
         else:
-            # Fallback to template questions
             fallback_list = FALLBACK_QUESTIONS.get(category, FALLBACK_QUESTIONS["behavioral"])
             question_text = random.choice(fallback_list)
             practice_question_id = None
@@ -73,50 +62,59 @@ class MockInterviewService:
             status=MockInterviewStatus.in_progress,
         )
 
-        db.session.add(session)
-        db.session.commit()
+        db.add(session)
+        db.commit()
+        db.refresh(session)
 
-        return MockInterviewSchema().dump(session)
+        return MockInterviewResponse.model_validate(session).model_dump()
 
     @staticmethod
-    def list_for_candidate(user_id: str, page: int = 1, per_page: int = 20) -> dict:
+    def list_for_candidate(db: Session, user_id: str, page: int = 1, per_page: int = 20) -> dict:
         """List mock interview sessions for the authenticated candidate."""
-
-        candidate = Candidate.query.filter_by(user_id=user_id).first()
+        candidate = db.query(Candidate).filter(Candidate.user_id == user_id).first()
         if not candidate:
             raise NotFoundError("Candidate profile not found.")
 
         query = (
-            MockInterview.query
-            .filter_by(candidate_id=str(candidate.id))
+            db.query(MockInterview)
+            .filter(MockInterview.candidate_id == str(candidate.id))
             .order_by(MockInterview.created_at.desc())
         )
 
-        return paginate_query(query, page, per_page, MockInterviewSchema())
+        res = paginate_query(query, page, per_page)
+        # Serialize response items
+        items_serialized = [MockInterviewResponse.model_validate(item).model_dump() for item in res["items"]]
+        return {
+            "items":    items_serialized,
+            "total":    res["total"],
+            "page":     res["page"],
+            "pages":    res["pages"],
+            "per_page": res["per_page"],
+            "has_next": res["has_next"],
+            "has_prev": res["has_prev"],
+        }
 
     @staticmethod
-    def get(session_id: str, user_id: str) -> dict:
+    def get(db: Session, session_id: str, user_id: str) -> dict:
         """Get a single mock interview session."""
-
-        session = MockInterview.query.get(session_id)
+        session = db.query(MockInterview).get(session_id)
         if not session:
             raise NotFoundError("Mock interview session not found.")
 
-        candidate = Candidate.query.filter_by(user_id=user_id).first()
+        candidate = db.query(Candidate).filter(Candidate.user_id == user_id).first()
         if not candidate or str(session.candidate_id) != str(candidate.id):
             raise NotFoundError("Mock interview session not found.")
 
-        return MockInterviewSchema().dump(session)
+        return MockInterviewResponse.model_validate(session).model_dump()
 
     @staticmethod
-    def submit_answer(session_id: str, user_id: str, answer_text: str) -> dict:
+    def submit_answer(db: Session, session_id: str, user_id: str, answer_text: str) -> dict:
         """Submit a candidate's answer for a mock interview session."""
-
-        session = MockInterview.query.get(session_id)
+        session = db.query(MockInterview).get(session_id)
         if not session:
             raise NotFoundError("Mock interview session not found.")
 
-        candidate = Candidate.query.filter_by(user_id=user_id).first()
+        candidate = db.query(Candidate).filter(Candidate.user_id == user_id).first()
         if not candidate or str(session.candidate_id) != str(candidate.id):
             raise NotFoundError("Mock interview session not found.")
 
@@ -125,6 +123,7 @@ class MockInterviewService:
 
         session.answer_text = answer_text
         session.status = MockInterviewStatus.in_progress
-        db.session.commit()
+        db.commit()
+        db.refresh(session)
 
-        return MockInterviewSchema().dump(session)
+        return MockInterviewResponse.model_validate(session).model_dump()

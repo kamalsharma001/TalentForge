@@ -1,17 +1,20 @@
-"""Marshmallow schemas for Notification."""
+from pydantic import BaseModel
+from uuid import UUID
+from datetime import datetime
+from typing import Optional
 
-from marshmallow import Schema, fields
+class NotificationResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    title: str
+    body: str
+    type: Optional[str] = None
+    action_url: Optional[str] = None
+    interview_id: Optional[UUID] = None
+    is_read: bool
+    read_at: Optional[datetime] = None
+    sent_email: bool
+    created_at: datetime
 
-
-class NotificationSchema(Schema):
-    id           = fields.UUID(dump_only=True)
-    user_id      = fields.UUID(dump_only=True)
-    title        = fields.Str()
-    body         = fields.Str()
-    type         = fields.Str(allow_none=True)
-    action_url   = fields.Str(allow_none=True)
-    interview_id = fields.UUID(allow_none=True)
-    is_read      = fields.Bool()
-    read_at      = fields.DateTime(allow_none=True)
-    sent_email   = fields.Bool(dump_only=True)
-    created_at   = fields.DateTime(dump_only=True)
+    class Config:
+        from_attributes = True

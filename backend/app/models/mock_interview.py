@@ -13,7 +13,9 @@ from datetime import datetime, timezone
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 
-from app import db
+from app.database import Base
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, Numeric, Enum as SAEnum, CheckConstraint, ARRAY, Table
+from sqlalchemy.orm import relationship
 
 
 class MockInterviewStatus(str, enum.Enum):
@@ -22,35 +24,35 @@ class MockInterviewStatus(str, enum.Enum):
     completed   = "completed"
 
 
-class MockInterview(db.Model):
+class MockInterview(Base):
     __tablename__ = "mock_interviews"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # ── Relationships ─────────────────────────────────────────────────────
-    candidate_id = db.Column(
+    candidate_id = Column(
         UUID(as_uuid=True),
-        db.ForeignKey("candidates.id", ondelete="CASCADE"),
+        ForeignKey("candidates.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    practice_question_id = db.Column(
+    practice_question_id = Column(
         UUID(as_uuid=True),
-        db.ForeignKey("practice_questions.id", ondelete="SET NULL"),
+        ForeignKey("practice_questions.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
 
     # ── Session details ───────────────────────────────────────────────────
-    job_role       = db.Column(db.String(150))
-    difficulty     = db.Column(db.String(20))          # easy / medium / hard
-    category       = db.Column(db.String(30))          # behavioral / technical / system_design
-    question_text  = db.Column(db.Text, nullable=False)
-    answer_text    = db.Column(db.Text)
-    duration_mins  = db.Column(db.Integer, default=30)
+    job_role       = Column(String(150))
+    difficulty     = Column(String(20))          # easy / medium / hard
+    category       = Column(String(30))          # behavioral / technical / system_design
+    question_text  = Column(Text, nullable=False)
+    answer_text    = Column(Text)
+    duration_mins  = Column(Integer, default=30)
 
     # ── Status ────────────────────────────────────────────────────────────
-    status = db.Column(
+    status = Column(
         SAEnum(MockInterviewStatus, name="mock_interview_status", create_type=True),
         nullable=False,
         default=MockInterviewStatus.pending,
@@ -58,29 +60,29 @@ class MockInterview(db.Model):
     )
 
     # ── AI feedback ───────────────────────────────────────────────────────
-    ai_summary      = db.Column(db.Text)
-    ai_strengths    = db.Column(db.Text)
-    ai_weaknesses   = db.Column(db.Text)
-    ai_score        = db.Column(db.Integer)
-    ai_generated_at = db.Column(db.DateTime(timezone=True))
+    ai_summary      = Column(Text)
+    ai_strengths    = Column(Text)
+    ai_weaknesses   = Column(Text)
+    ai_score        = Column(Integer)
+    ai_generated_at = Column(DateTime(timezone=True))
 
     # ── Timestamps ────────────────────────────────────────────────────────
-    created_at = db.Column(
-        db.DateTime(timezone=True),
+    created_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    updated_at = db.Column(
-        db.DateTime(timezone=True),
+    updated_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    completed_at = db.Column(db.DateTime(timezone=True))
+    completed_at = Column(DateTime(timezone=True))
 
     # ── Relationships ─────────────────────────────────────────────────────
-    candidate         = db.relationship("Candidate",        backref="mock_interviews")
-    practice_question = db.relationship("PracticeQuestion", backref="mock_interviews")
+    candidate         = relationship("Candidate",        backref="mock_interviews")
+    practice_question = relationship("PracticeQuestion", backref="mock_interviews")
 
     def __repr__(self) -> str:
         return f"<MockInterview {self.id} [{self.status}]>"

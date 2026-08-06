@@ -1,33 +1,41 @@
-"""Marshmallow schemas for PracticeQuestion serialisation / validation."""
+from pydantic import BaseModel, Field, field_validator
+from uuid import UUID
+from datetime import datetime
+from typing import Optional
 
-from marshmallow import Schema, fields, validate
+class PracticeQuestionCreateRequest(BaseModel):
+    question: str = Field(..., min_length=5)
+    job_role: str = Field(..., min_length=2, max_length=150)
+    difficulty: str
+    category: str
+    hint: Optional[str] = None
+    sample_answer: Optional[str] = None
 
+    @field_validator("difficulty")
+    @classmethod
+    def validate_diff(cls, v):
+        if v not in ("easy", "medium", "hard"):
+            raise ValueError("difficulty must be easy, medium, or hard")
+        return v
 
-class PracticeQuestionCreateSchema(Schema):
-    """Input schema for POST /api/practice (admin only)."""
-    question      = fields.Str(required=True, validate=validate.Length(min=5))
-    job_role      = fields.Str(required=True, validate=validate.Length(min=2, max=150))
-    difficulty    = fields.Str(
-        required=True,
-        validate=validate.OneOf(["easy", "medium", "hard"]),
-    )
-    category      = fields.Str(
-        required=True,
-        validate=validate.OneOf(["behavioral", "technical", "system_design"]),
-    )
-    hint          = fields.Str(allow_none=True)
-    sample_answer = fields.Str(allow_none=True)
+    @field_validator("category")
+    @classmethod
+    def validate_cat(cls, v):
+        if v not in ("behavioral", "technical", "system_design"):
+            raise ValueError("category must be behavioral, technical, or system_design")
+        return v
 
+class PracticeQuestionResponse(BaseModel):
+    id: UUID
+    question: str
+    job_role: str
+    difficulty: str
+    category: str
+    hint: Optional[str] = None
+    sample_answer: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
 
-class PracticeQuestionSchema(Schema):
-    """Full serialiser for outbound practice question responses."""
-    id            = fields.UUID(dump_only=True)
-    question      = fields.Str()
-    job_role      = fields.Str()
-    difficulty    = fields.Str()
-    category      = fields.Str()
-    hint          = fields.Str(allow_none=True)
-    sample_answer = fields.Str(allow_none=True)
-    is_active     = fields.Bool()
-    created_at    = fields.DateTime(dump_only=True)
-    updated_at    = fields.DateTime(dump_only=True)
+    class Config:
+        from_attributes = True

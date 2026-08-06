@@ -1,33 +1,29 @@
 """
 ReportService — manages the InterviewReport lifecycle.
+Fully native FastAPI and legacy SQLAlchemy ORM service.
 """
 
 from datetime import datetime, timezone
-
-from app import db
+from sqlalchemy.orm import Session
 from app.models.interview import Interview, InterviewStatus
 from app.models.interview_report import InterviewReport, ReportDecision
 from app.models.interviewer import Interviewer
-from app.schemas.report_schema import InterviewReportSchema, CandidateReportSchema
+from app.schemas.report_schema import InterviewReportResponse, CandidateReportResponse
 from app.utils.errors import NotFoundError, ConflictError, ForbiddenError
-
-_schema           = InterviewReportSchema()
-_candidate_schema = CandidateReportSchema()
-
 
 class ReportService:
 
     # ── Create ────────────────────────────────────────────────────────────
     @staticmethod
-    def create(interview_id: str, data: dict, interviewer_user_id: str) -> dict:
-        interview = Interview.query.get(interview_id)
+    def create(db: Session, interview_id: str, data: dict, interviewer_user_id: str) -> dict:
+        interview = db.query(Interview).get(interview_id)
         if not interview:
             raise NotFoundError("Interview not found.")
 
         if interview.status != InterviewStatus.report_pending:
             raise ConflictError("A report can only be created for completed interviews.")
 
-        interviewer = Interviewer.query.filter_by(user_id=interviewer_user_id).first()
+        interviewer = db.query(Interviewer).filter(Interviewer.user_id == interviewer_user_id).first()
         if not interviewer or str(interview.interviewer_id) != str(interviewer.id):
             raise ForbiddenError("Only the assigned interviewer can submit this report.")
 
@@ -48,16 +44,16 @@ class ReportService:
         )
         ReportService._compute_overall_score(report, interview)
 
-        db.session.add(report)
-
+        db.add(report)
         interview.status = InterviewStatus.completed
-        db.session.commit()
-        return _schema.dump(report)
+        db.commit()
+        db.refresh(report)
+        return InterviewReportResponse.model_validate(report).model_dump()
 
     # ── Update ────────────────────────────────────────────────────────────
     @staticmethod
-    def update(report_id: str, data: dict, requesting_user_id: str) -> dict:
-        report = InterviewReport.query.get(report_id)
+    def update(db: Session, report_id: str, data: dict, requesting_user_id: str) -> dict:
+        report = db.query(InterviewReport).get(report_id)
         if not report:
             raise NotFoundError("Report not found.")
 
@@ -77,24 +73,27 @@ class ReportService:
             report.is_published = True
             report.published_at = datetime.now(timezone.utc)
 
-        db.session.commit()
-        return _schema.dump(report)
+        db.commit()
+        db.refresh(report)
+        return InterviewReportResponse.model_validate(report).model_dump()
 
     # ── Get by interview ──────────────────────────────────────────────────
     @staticmethod
-    def get_by_interview(interview_id: str, as_candidate: bool = False) -> dict:
-        report = InterviewReport.query.filter_by(interview_id=interview_id).first()
+    def get_by_interview(db: Session, interview_id: str, as_candidate: bool = False) -> dict:
+        report = db.query(InterviewReport).filter(InterviewReport.interview_id == interview_id).first()
         if not report:
             raise NotFoundError("Report not found for this interview.")
         if as_candidate and not report.is_published:
             raise NotFoundError("Report is not yet available.")
-        schema = _candidate_schema if as_candidate else _schema
-        return schema.dump(report)
+        
+        if as_candidate:
+            return CandidateReportResponse.model_validate(report).model_dump()
+        return InterviewReportResponse.model_validate(report).model_dump()
 
     # ── Publish ───────────────────────────────────────────────────────────
     @staticmethod
-    def publish(report_id: str) -> dict:
-        report = InterviewReport.query.get(report_id)
+    def publish(db: Session, report_id: str) -> dict:
+        report = db.query(InterviewReport).get(report_id)
         if not report:
             raise NotFoundError("Report not found.")
         if report.is_published:
@@ -102,20 +101,21 @@ class ReportService:
 
         report.is_published = True
         report.published_at = datetime.now(timezone.utc)
-        db.session.commit()
-        return _schema.dump(report)
+        db.commit()
+        db.refresh(report)
+        return InterviewReportResponse.model_validate(report).model_dump()
 
     # ── Attach AI summary ─────────────────────────────────────────────────
     @staticmethod
-    def attach_ai_summary(report_id: str, ai_data: dict) -> None:
-        report = InterviewReport.query.get(report_id)
+    def attach_ai_summary(db: Session, report_id: str, ai_data: dict) -> None:
+        report = db.query(InterviewReport).get(report_id)
         if not report:
             return
         report.ai_summary      = ai_data.get("summary")
         report.ai_strengths    = ai_data.get("strengths")
         report.ai_weaknesses   = ai_data.get("weaknesses")
         report.ai_generated_at = datetime.now(timezone.utc)
-        db.session.commit()
+        db.commit()
 
     # ── Internal helpers ──────────────────────────────────────────────────
     @staticmethod

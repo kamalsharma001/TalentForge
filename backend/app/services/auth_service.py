@@ -1,17 +1,15 @@
 """
 AuthService — all authentication business logic.
-No Flask request context is used here; this layer is fully testable.
+Fully native FastAPI and legacy SQLAlchemy ORM service.
 """
 
 import secrets
-
-from flask_jwt_extended import create_access_token, create_refresh_token
-
-from app import db
+from sqlalchemy.orm import Session
+from app.utils.security import create_access_token, create_refresh_token
 from app.models.user import User, UserRole
 from app.models.candidate import Candidate
 from app.models.interviewer import Interviewer
-from app.schemas.user_schema import UserSchema
+from app.schemas.user_schema import UserResponse
 from app.services.supabase_auth_service import SupabaseAuthService
 from app.utils.errors import (
     ConflictError,
@@ -20,14 +18,11 @@ from app.utils.errors import (
 )
 from app.utils.validators import validate_password_strength
 
-_user_schema = UserSchema()
-
-
 class AuthService:
 
     # ─────────────────────────────────────────────────────────────────────
     @staticmethod
-    def register(data: dict) -> dict:
+    def register(db: Session, data: dict) -> dict:
         """
         Create a new user account.
         Also bootstraps role-specific profile rows (Candidate / Interviewer).
@@ -35,7 +30,9 @@ class AuthService:
         """
         email = data["email"].lower().strip()
 
-        if User.query.filter_by(email=email).first():
+        # Legacy ORM query
+        existing_user = db.query(User).filter(User.email == email).first()
+        if existing_user:
             raise ConflictError(f"Email '{email}' is already registered.")
 
         password_error = validate_password_strength(data["password"])
@@ -52,24 +49,24 @@ class AuthService:
             phone=data.get("phone"),
         )
         user.set_password(data["password"])
-        db.session.add(user)
-        db.session.flush()   # get user.id without committing
+        db.add(user)
+        db.flush()   # get user.id without committing
 
         # Bootstrap role-specific profile ────────────────────────────────
         if role == UserRole.candidate:
-            db.session.add(Candidate(user_id=user.id))
+            db.add(Candidate(user_id=user.id))
         elif role == UserRole.interviewer:
-            db.session.add(Interviewer(user_id=user.id))
+            db.add(Interviewer(user_id=user.id))
 
-        db.session.commit()
+        db.commit()
 
         return AuthService._build_token_response(user)
 
     # ─────────────────────────────────────────────────────────────────────
     @staticmethod
-    def login(email: str, password: str) -> dict:
+    def login(db: Session, email: str, password: str) -> dict:
         """Validate credentials and return JWT tokens."""
-        user = User.query.filter_by(email=email.lower().strip()).first()
+        user = db.query(User).filter(User.email == email.lower().strip()).first()
 
         if not user or not user.check_password(password):
             raise AuthenticationError("Invalid email or password.")
@@ -81,24 +78,14 @@ class AuthService:
 
     # ─────────────────────────────────────────────────────────────────────
     @staticmethod
-    def oauth_google_start(supabase_access_token: str) -> dict:
+    def oauth_google_start(db: Session, supabase_access_token: str) -> dict:
         """
         First step of "Continue with Google".
-
-        Verifies the Supabase-issued token (identity only) and looks the
-        person up by their verified Google email in our existing users
-        table — the same table/role system used by password login.
-
-        * Existing account found  -> same shape as login(): tokens + user.
-        * No account found        -> {"needs_registration": True, profile}
-          so the frontend can collect a role (recruiter/interviewer/
-          candidate) just like the normal registration form, without us
-          ever guessing or hardcoding one.
         """
         claims = SupabaseAuthService.verify_access_token(supabase_access_token)
         profile = SupabaseAuthService.extract_profile(claims)
 
-        user = User.query.filter_by(email=profile["email"].lower().strip()).first()
+        user = db.query(User).filter(User.email == profile["email"].lower().strip()).first()
 
         if user is None:
             return {"needs_registration": True, **profile}
@@ -111,6 +98,7 @@ class AuthService:
     # ─────────────────────────────────────────────────────────────────────
     @staticmethod
     def oauth_google_complete(
+        db: Session,
         supabase_access_token: str,
         role: str,
         first_name: str = None,
@@ -118,19 +106,14 @@ class AuthService:
         phone: str = None,
     ) -> dict:
         """
-        Second step of "Continue with Google" — only reached when
-        oauth_google_start reported no existing account.
-
-        Creates the user the same way register() does (including the
-        role-specific Candidate/Interviewer profile bootstrap), except
-        the password is a random, unusable value since the person
-        authenticates via Google, not a password.
+        Second step of "Continue with Google".
         """
         claims = SupabaseAuthService.verify_access_token(supabase_access_token)
         profile = SupabaseAuthService.extract_profile(claims)
         email = profile["email"].lower().strip()
 
-        if User.query.filter_by(email=email).first():
+        existing_user = db.query(User).filter(User.email == email).first()
+        if existing_user:
             raise ConflictError(f"Email '{email}' is already registered.")
 
         try:
@@ -150,23 +133,23 @@ class AuthService:
             is_verified=True,  # Google already verified this email address
         )
         user.set_password(secrets.token_urlsafe(32))  # unusable random password
-        db.session.add(user)
-        db.session.flush()
+        db.add(user)
+        db.flush()
 
         if user_role == UserRole.candidate:
-            db.session.add(Candidate(user_id=user.id))
+            db.add(Candidate(user_id=user.id))
         elif user_role == UserRole.interviewer:
-            db.session.add(Interviewer(user_id=user.id))
+            db.add(Interviewer(user_id=user.id))
 
-        db.session.commit()
+        db.commit()
 
         return AuthService._build_token_response(user)
 
     # ─────────────────────────────────────────────────────────────────────
     @staticmethod
-    def refresh_token(user_id: str) -> dict:
+    def refresh_token(db: Session, user_id: str) -> dict:
         """Issue a fresh access token from a valid refresh token."""
-        user = User.query.get(user_id)
+        user = db.query(User).filter(User.id == user_id).first()
         if not user or not user.is_active:
             raise AuthenticationError("User not found or inactive.")
 
@@ -175,7 +158,7 @@ class AuthService:
 
     # ─────────────────────────────────────────────────────────────────────
     @staticmethod
-    def change_password(user: User, old_password: str, new_password: str) -> None:
+    def change_password(db: Session, user: User, old_password: str, new_password: str) -> None:
         if not user.check_password(old_password):
             raise AuthenticationError("Current password is incorrect.")
 
@@ -184,7 +167,7 @@ class AuthService:
             raise ValidationError(error)
 
         user.set_password(new_password)
-        db.session.commit()
+        db.commit()
 
     # ─────────────────────────────────────────────────────────────────────
     @staticmethod
@@ -194,5 +177,5 @@ class AuthService:
         return {
             "access_token":  access_token,
             "refresh_token": refresh_token,
-            "user":          _user_schema.dump(user),
+            "user":          UserResponse.model_validate(user).model_dict() if hasattr(UserResponse, "model_dict") else UserResponse.model_validate(user).model_dump(),
         }

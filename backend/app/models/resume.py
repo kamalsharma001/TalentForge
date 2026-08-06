@@ -5,38 +5,40 @@ from datetime import datetime, timezone
 
 from sqlalchemy.dialects.postgresql import UUID
 
-from app import db
+from app.database import Base
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, Numeric, Enum as SAEnum, CheckConstraint, ARRAY, Table
+from sqlalchemy.orm import relationship
 
 
-class Resume(db.Model):
+class Resume(Base):
     __tablename__ = "resumes"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    candidate_id = db.Column(
+    candidate_id = Column(
         UUID(as_uuid=True),
-        db.ForeignKey("candidates.id", ondelete="CASCADE"),
+        ForeignKey("candidates.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
 
     # ── Cloudinary metadata ───────────────────────────────────────────────
-    file_name        = db.Column(db.String(255), nullable=False)
-    cloudinary_url   = db.Column(db.Text, nullable=False)
-    cloudinary_id    = db.Column(db.String(255), nullable=False)
-    file_size_bytes  = db.Column(db.Integer)
-    mime_type        = db.Column(db.String(100))
+    file_name        = Column(String(255), nullable=False)
+    cloudinary_url   = Column(Text, nullable=False)
+    cloudinary_id    = Column(String(255), nullable=False)
+    file_size_bytes  = Column(Integer)
+    mime_type        = Column(String(100))
 
-    is_primary = db.Column(db.Boolean, default=False, nullable=False)
+    is_primary = Column(Boolean, default=False, nullable=False)
 
-    uploaded_at = db.Column(
-        db.DateTime(timezone=True),
+    uploaded_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
     # ── Relationships ─────────────────────────────────────────────────────
-    candidate = db.relationship("Candidate", back_populates="resumes")
+    candidate = relationship("Candidate", back_populates="resumes")
 
     def __repr__(self) -> str:
         return f"<Resume {self.file_name} candidate={self.candidate_id}>"

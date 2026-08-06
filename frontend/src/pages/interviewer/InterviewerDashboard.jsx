@@ -3,10 +3,11 @@ import { useAuth } from '../../context/AuthContext'
 import { useInterviews } from '../../hooks'
 import { PageSpinner } from '../../components/ui'
 import { DashboardHeader, StatsCard, DashboardPanel, QuickActionCard, PanelEmptyState } from '../../components/dashboard/DashboardParts'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 
 export default function InterviewerDashboard() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { data, loading } = useInterviews({ per_page: 5 })
   const interviews = data?.items || []
@@ -48,8 +49,8 @@ export default function InterviewerDashboard() {
             ) : (
               <div className="space-y-2">
                 {upcoming.map(iv => (
-                  <Link key={iv.id} to={`/interviews/${iv.id}`}
-                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream-50 transition-colors">
+                  <div key={iv.id} onClick={() => navigate(`/interviews/${iv.id}`)}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-cream-50 transition-colors cursor-pointer">
                     <div className="w-9 h-9 bg-forest-100 rounded-lg flex items-center justify-center text-forest-700 text-sm font-bold">
                       {format(new Date(iv.scheduled_at), 'd')}
                     </div>
@@ -64,7 +65,7 @@ export default function InterviewerDashboard() {
                         Join
                       </a>
                     )}
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}

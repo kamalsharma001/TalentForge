@@ -16,7 +16,9 @@ import bcrypt
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 
-from app import db
+from app.database import Base
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, Numeric, Enum as SAEnum, CheckConstraint, ARRAY, Table
+from sqlalchemy.orm import relationship
 
 
 class UserRole(str, enum.Enum):
@@ -26,58 +28,58 @@ class UserRole(str, enum.Enum):
     candidate   = "candidate"
 
 
-class User(db.Model):
+class User(Base):
     __tablename__ = "users"
 
     # ── Primary key ───────────────────────────────────────────────────────
-    id = db.Column(
+    id = Column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
     )
 
     # ── Identity ──────────────────────────────────────────────────────────
-    email = db.Column(db.String(255), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(
         SAEnum(UserRole, name="user_role", create_type=True),
         nullable=False,
     )
 
     # ── Profile ───────────────────────────────────────────────────────────
-    first_name  = db.Column(db.String(100), nullable=False)
-    last_name   = db.Column(db.String(100), nullable=False)
-    avatar_url  = db.Column(db.Text)
-    phone       = db.Column(db.String(30))
-    is_active   = db.Column(db.Boolean, default=True, nullable=False)
-    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    first_name  = Column(String(100), nullable=False)
+    last_name   = Column(String(100), nullable=False)
+    avatar_url  = Column(Text)
+    phone       = Column(String(30))
+    is_active   = Column(Boolean, default=True, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
 
     # ── Timestamps ────────────────────────────────────────────────────────
-    created_at = db.Column(
-        db.DateTime(timezone=True),
+    created_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    updated_at = db.Column(
-        db.DateTime(timezone=True),
+    updated_at = Column(
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
     # ── Relationships ─────────────────────────────────────────────────────
-    org_memberships = db.relationship(
+    org_memberships = relationship(
         "OrgMember", back_populates="user", cascade="all, delete-orphan"
     )
-    interviewer_profile = db.relationship(
+    interviewer_profile = relationship(
         "Interviewer", back_populates="user",
         uselist=False, cascade="all, delete-orphan",
     )
-    candidate_profile = db.relationship(
+    candidate_profile = relationship(
         "Candidate", back_populates="user",
         uselist=False, cascade="all, delete-orphan",
     )
-    notifications = db.relationship(
+    notifications = relationship(
         "Notification", back_populates="user", cascade="all, delete-orphan"
     )
 

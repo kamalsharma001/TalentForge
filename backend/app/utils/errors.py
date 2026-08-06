@@ -1,21 +1,16 @@
 """
 utils/errors.py
 ───────────────
-Custom exception hierarchy + Flask global error handlers.
-
-Every domain exception inherits from AppError so a single handler
-at the app level can serialise all errors consistently.
-
-Response envelope:
-    { "error": "<message>", "code": "<machine-readable code>" }
+Custom exception hierarchy + FastAPI global error handlers.
 """
 
 import logging
-from flask import jsonify
-from marshmallow import ValidationError as MarshmallowValidationError
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 logger = logging.getLogger(__name__)
-
 
 # ── Custom exception hierarchy ────────────────────────────────────────────────
 
@@ -31,82 +26,77 @@ class AppError(Exception):
     def to_dict(self) -> dict:
         return {"error": self.message, "code": self.code}
 
-
 class ValidationError(AppError):
     status_code = 422
     code        = "validation_error"
-
 
 class AuthenticationError(AppError):
     status_code = 401
     code        = "authentication_error"
 
-
 class ForbiddenError(AppError):
     status_code = 403
     code        = "forbidden"
-
 
 class NotFoundError(AppError):
     status_code = 404
     code        = "not_found"
 
-
 class ConflictError(AppError):
     status_code = 409
     code        = "conflict"
-
 
 class ServiceUnavailableError(AppError):
     status_code = 503
     code        = "service_unavailable"
 
-
-# ── Flask error handler registration ─────────────────────────────────────────
+# ── FastAPI error handler registration ─────────────────────────────────────────
 
 def register_error_handlers(app) -> None:
 
-    # ── Our own exceptions ────────────────────────────────────────────────
-    @app.errorhandler(AppError)
-    def handle_app_error(exc: AppError):
+    @app.exception_handler(AppError)
+    def handle_app_error(request: Request, exc: AppError):
         logger.warning("[%s] %s", exc.code, exc.message)
-        return jsonify(exc.to_dict()), exc.status_code
+        return JSONResponse(content=exc.to_dict(), status_code=exc.status_code)
 
-    # ── Marshmallow validation errors (raised by schema.load) ─────────────
-    @app.errorhandler(MarshmallowValidationError)
-    def handle_marshmallow(exc: MarshmallowValidationError):
-        return jsonify({"error": "Validation failed", "code": "validation_error", "details": exc.messages}), 422
+    @app.exception_handler(RequestValidationError)
+    def handle_pydantic_validation(request: Request, exc: RequestValidationError):
+        # Format the validation error response to match the user structure
+        details = {}
+        for err in exc.errors():
+            loc = err.get("loc", [])
+            # Usually loc is ("body", "field_name")
+            field_name = loc[-1] if loc else "non_field_errors"
+            details[str(field_name)] = [err.get("msg", "Invalid value")]
 
-    # ── Flask / Werkzeug HTTP errors ──────────────────────────────────────
-    @app.errorhandler(400)
-    def bad_request(exc):
-        return jsonify({"error": "Bad request", "code": "bad_request"}), 400
+        return JSONResponse(
+            content={
+                "error": "Validation failed",
+                "code": "validation_error",
+                "details": details
+            },
+            status_code=422
+        )
 
-    @app.errorhandler(401)
-    def unauthorised(exc):
-        return jsonify({"error": "Unauthorised", "code": "authentication_error"}), 401
+    @app.exception_handler(StarletteHTTPException)
+    def handle_http_exception(request: Request, exc: StarletteHTTPException):
+        status = exc.status_code
+        code_map = {
+            400: ("Bad request", "bad_request"),
+            401: ("Unauthorised", "authentication_error"),
+            403: ("Forbidden", "forbidden"),
+            404: ("Resource not found", "not_found"),
+            405: ("Method not allowed", "method_not_allowed"),
+            422: ("Unprocessable entity", "validation_error"),
+            429: ("Too many requests", "rate_limited"),
+        }
+        msg, code = code_map.get(status, (exc.detail or "An error occurred", "http_error"))
+        return JSONResponse(content={"error": msg, "code": code}, status_code=status)
 
-    @app.errorhandler(403)
-    def forbidden(exc):
-        return jsonify({"error": "Forbidden", "code": "forbidden"}), 403
-
-    @app.errorhandler(404)
-    def not_found(exc):
-        return jsonify({"error": "Resource not found", "code": "not_found"}), 404
-
-    @app.errorhandler(405)
-    def method_not_allowed(exc):
-        return jsonify({"error": "Method not allowed", "code": "method_not_allowed"}), 405
-
-    @app.errorhandler(422)
-    def unprocessable(exc):
-        return jsonify({"error": "Unprocessable entity", "code": "validation_error"}), 422
-
-    @app.errorhandler(429)
-    def too_many_requests(exc):
-        return jsonify({"error": "Too many requests", "code": "rate_limited"}), 429
-
-    @app.errorhandler(500)
-    def internal_server_error(exc):
+    @app.exception_handler(Exception)
+    def handle_general_exception(request: Request, exc: Exception):
         logger.exception("Unhandled 500 error: %s", exc)
-        return jsonify({"error": "Internal server error", "code": "internal_error"}), 500
+        return JSONResponse(
+            content={"error": "Internal server error", "code": "internal_error"},
+            status_code=500
+        )

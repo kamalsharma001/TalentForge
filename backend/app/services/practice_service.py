@@ -10,11 +10,11 @@ Features:
 
 import logging
 
-from app import db
+from sqlalchemy.orm import Session
 from app.models.practice_question import PracticeQuestion
 from app.utils.errors import NotFoundError
 from app.utils.pagination import paginate_query
-from app.schemas.practice_schema import PracticeQuestionSchema
+from app.schemas.practice_schema import PracticeQuestionResponse
 
 logger = logging.getLogger(__name__)
 
@@ -1227,6 +1227,7 @@ class PracticeService:
 
     @staticmethod
     def list_questions(
+        db: Session,
         page: int = 1,
         per_page: int = 20,
         job_role: str | None = None,
@@ -1234,57 +1235,62 @@ class PracticeService:
         category: str | None = None,
     ) -> dict:
         """List practice questions with optional filters."""
-
-        query = PracticeQuestion.query.filter_by(is_active=True)
+        query = db.query(PracticeQuestion).filter(PracticeQuestion.is_active == True)
 
         if job_role:
             query = query.filter(PracticeQuestion.job_role.ilike(f"%{job_role}%"))
         if difficulty:
-            query = query.filter_by(difficulty=difficulty)
+            query = query.filter(PracticeQuestion.difficulty == difficulty)
         if category:
-            query = query.filter_by(category=category)
+            query = query.filter(PracticeQuestion.category == category)
 
         query = query.order_by(PracticeQuestion.created_at.desc())
 
-        return paginate_query(query, page, per_page, PracticeQuestionSchema())
+        res = paginate_query(query, page, per_page)
+        # Serialize response items
+        items_serialized = [PracticeQuestionResponse.model_validate(item).model_dump() for item in res["items"]]
+        return {
+            "items":    items_serialized,
+            "total":    res["total"],
+            "page":     res["page"],
+            "pages":    res["pages"],
+            "per_page": res["per_page"],
+            "has_next": res["has_next"],
+            "has_prev": res["has_prev"],
+        }
 
     @staticmethod
-    def get(question_id: str) -> dict:
+    def get(db: Session, question_id: str) -> dict:
         """Get a single practice question."""
-
-        question = PracticeQuestion.query.get(question_id)
+        question = db.query(PracticeQuestion).get(question_id)
         if not question:
             raise NotFoundError("Practice question not found.")
-
-        return PracticeQuestionSchema().dump(question)
+        return PracticeQuestionResponse.model_validate(question).model_dump()
 
     @staticmethod
-    def create(data: dict) -> dict:
+    def create(db: Session, data: dict) -> dict:
         """Create a new practice question (admin only)."""
-
         question = PracticeQuestion(**data)
-        db.session.add(question)
-        db.session.commit()
-
-        return PracticeQuestionSchema().dump(question)
+        db.add(question)
+        db.commit()
+        db.refresh(question)
+        return PracticeQuestionResponse.model_validate(question).model_dump()
 
     @staticmethod
-    def seed() -> dict:
+    def seed(db: Session) -> dict:
         """
         Seed the practice question bank.
-        Safe to re-run — only inserts questions that don't already exist
-        (matched by question text + job_role + difficulty + category).
+        Safe to re-run.
         """
-
         created = 0
         skipped = 0
 
         for q_data in SEED_QUESTIONS:
-            exists = PracticeQuestion.query.filter_by(
-                question=q_data["question"],
-                job_role=q_data["job_role"],
-                difficulty=q_data["difficulty"],
-                category=q_data["category"],
+            exists = db.query(PracticeQuestion).filter(
+                PracticeQuestion.question == q_data["question"],
+                PracticeQuestion.job_role == q_data["job_role"],
+                PracticeQuestion.difficulty == q_data["difficulty"],
+                PracticeQuestion.category == q_data["category"],
             ).first()
 
             if exists:
@@ -1292,10 +1298,10 @@ class PracticeService:
                 continue
 
             question = PracticeQuestion(**q_data)
-            db.session.add(question)
+            db.add(question)
             created += 1
 
-        db.session.commit()
+        db.commit()
         logger.info("Seed: %d questions created, %d skipped (already exist).", created, skipped)
 
         return {

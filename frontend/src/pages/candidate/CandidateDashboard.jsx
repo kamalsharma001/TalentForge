@@ -13,11 +13,6 @@ export default function CandidateDashboard() {
   const { data, loading } = useInterviews({ per_page: 5 })
   const interviews = data?.items || []
 
-  useEffect(() => {
-    api.get("/interviews/")
-      .then(res => console.log("API RESPONSE:", res.data))
-      .catch(err => console.log("API ERROR:", err.response || err))
-  }, [])
 
   const upcoming = interviews.filter(iv => iv.status === 'scheduled')
   const completed = interviews.filter(iv => iv.status === 'completed')

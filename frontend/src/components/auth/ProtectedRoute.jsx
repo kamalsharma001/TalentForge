@@ -32,8 +32,6 @@ export default function ProtectedRoute({ children, roles }) {
     role = role.split(".")[1]
   }
 
-  console.log("ProtectedRoute role:", role)
-
   if (roles && !roles.includes(role)) {
     const dashboard = ROLE_DASHBOARDS[role] || '/'
     return <Navigate to={dashboard} replace />

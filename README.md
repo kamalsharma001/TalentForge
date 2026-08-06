@@ -30,7 +30,7 @@ TalentForge connects recruiters, interviewers, and candidates on a single platfo
 
 ## Tech stack
 
-**Backend** — Flask 3 · PostgreSQL · SQLAlchemy · Alembic · Flask-JWT-Extended · Marshmallow · Gunicorn
+**Backend** — FastAPI · PostgreSQL · SQLAlchemy (Legacy Declarative ORM) · Alembic · PyJWT · Pydantic v2 · Gunicorn (Uvicorn workers)
 
 **Frontend** — React 18 · Vite 5 · React Router 6 · Axios · Tailwind CSS 3 · date-fns
 
@@ -41,19 +41,15 @@ TalentForge connects recruiters, interviewers, and candidates on a single platfo
 TalentForge/
 ├── backend/
 │   ├── app/
-│   │   ├── auth/              # JWT routes + decorators
-│   │   ├── users/             # User profile management
-│   │   ├── interviews/        # Interview CRUD + lifecycle
-│   │   ├── scheduling/        # Availability slots + smart match
-│   │   ├── reports/           # Scored reports
-│   │   ├── notifications/     # In-app notifications
-│   │   ├── ai_feedback/       # AI summary generation
-│   │   ├── mock_interviews/   # Mock interview sessions
-│   │   ├── practice/          # Practice question bank
-│   │   ├── models/            # SQLAlchemy models
-│   │   ├── schemas/           # Marshmallow schemas
-│   │   ├── services/          # Business logic layer
-│   │   └── utils/             # Errors, pagination, validators
+│   │   ├── routers/           # FastAPI APIRouter endpoints
+│   │   ├── models/            # SQLAlchemy legacy declarative models
+│   │   ├── schemas/           # Pydantic v2 validation models
+│   │   ├── services/          # Decoupled business logic (using classic ORM queries)
+│   │   ├── utils/             # Errors, pagination, security, validators
+│   │   ├── main.py            # FastAPI app entry point
+│   │   ├── config.py          # App settings mapping environment variables
+│   │   ├── database.py        # SQLAlchemy engine and SessionLocal dependency
+│   │   └── dependencies.py    # Common Depends() helpers (JWT extraction, RoleChecker)
 │   ├── migrations/            # Alembic versions
 │   └── requirements.txt
 │
@@ -88,7 +84,7 @@ source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env              # fill in your values
 
-flask db upgrade
+alembic upgrade head
 python run.py
 ```
 
@@ -184,8 +180,8 @@ pending ──► scheduled ──► completed ──► report_pending ──�
 
 **Backend → [Render](https://render.com)**
 1. Create a Web Service pointing to `backend/`
-2. Build command: `pip install -r requirements.txt && flask db upgrade`
-3. Start command: `gunicorn run:app`
+2. Build command: `pip install -r requirements.txt && alembic upgrade head`
+3. Start command: `gunicorn run:app --worker-class uvicorn.workers.UvicornWorker`
 4. Add all env variables from `.env.example`
 
 **Frontend → [Vercel](https://vercel.com)**
@@ -203,4 +199,4 @@ pending ──► scheduled ──► completed ──► report_pending ──�
 
 ---
 
-*Built with Flask · React · PostgreSQL*
+*Built with FastAPI · React · PostgreSQL*

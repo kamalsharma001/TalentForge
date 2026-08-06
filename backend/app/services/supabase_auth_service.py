@@ -25,8 +25,7 @@ doesn't recognize yet (e.g. after Supabase rotates keys).
 
 import jwt
 from jwt import PyJWKClient
-from flask import current_app
-
+from app.config import get_config
 from app.utils.errors import AuthenticationError
 
 # One PyJWKClient per Supabase project URL, reused across requests so the
@@ -38,7 +37,8 @@ class SupabaseAuthService:
 
     @staticmethod
     def _get_jwk_client() -> PyJWKClient:
-        supabase_url = (current_app.config.get("SUPABASE_URL") or "").rstrip("/")
+        cfg = get_config()
+        supabase_url = (cfg.SUPABASE_URL or "").rstrip("/")
         if not supabase_url:
             raise AuthenticationError("Google sign-in is not configured.")
 

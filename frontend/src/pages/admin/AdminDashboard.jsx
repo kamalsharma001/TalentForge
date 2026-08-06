@@ -36,7 +36,6 @@ export function AdminDashboard() {
 
   const users = usersData?.items || []
   const interviews = intData?.items || []
-  console.log(interviews)
 
   const pendingInterviews = interviews.filter(i => {
   const status = cleanStatus(i.status)

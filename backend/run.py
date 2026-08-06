@@ -1,12 +1,12 @@
 """
 TalentForge — entry point.
 Run locally:  python run.py
-Production:   gunicorn "app:create_app()" -b 0.0.0.0:$PORT
+Production:   gunicorn "app.main:app" -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT
 """
 
-from app import create_app
-
-app = create_app()
+from app.main import app
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    import uvicorn
+    # Use reload=True in development
+    uvicorn.run("app.main:app", host="0.0.0.0", port=5000, reload=True)

@@ -1,79 +1,85 @@
-"""Marshmallow schemas for User serialisation / validation."""
-
-from marshmallow import Schema, fields, validate, validates, ValidationError, pre_load
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from uuid import UUID
+from datetime import datetime
+from typing import Optional
 from app.utils.validators import validate_password_strength
 
+class UserResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    role: str
+    first_name: str
+    last_name: str
+    full_name: str
+    avatar_url: Optional[str] = None
+    phone: Optional[str] = None
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
 
-class UserSchema(Schema):
-    """Read-only serialiser — never exposes password_hash."""
-    id          = fields.UUID(dump_only=True)
-    email       = fields.Email(dump_only=True)
-    role        = fields.Str(dump_only=True)
-    first_name  = fields.Str(dump_only=True)
-    last_name   = fields.Str(dump_only=True)
-    full_name   = fields.Method("get_full_name", dump_only=True)
-    avatar_url  = fields.Str(dump_only=True, allow_none=True)
-    phone       = fields.Str(dump_only=True, allow_none=True)
-    is_active   = fields.Bool(dump_only=True)
-    is_verified = fields.Bool(dump_only=True)
-    created_at  = fields.DateTime(dump_only=True)
+    class Config:
+        from_attributes = True
 
-    def get_full_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}"
+class UserRegistrationSchema(BaseModel):
+    email: EmailStr
+    password: str
+    role: str
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    phone: Optional[str] = None
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_email(cls, v):
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
 
-class UserRegistrationSchema(Schema):
-    """Input schema for POST /api/auth/register."""
-    email      = fields.Email(required=True)
-    password   = fields.Str(required=True, load_only=True)
-    role       = fields.Str(
-        required=True,
-        validate=validate.OneOf(["recruiter", "interviewer", "candidate"]),
-    )
-    first_name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
-    last_name  = fields.Str(required=True, validate=validate.Length(min=1, max=100))
-    phone      = fields.Str(load_only=True, allow_none=True)
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def strip_spaces(cls, v):
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
-    @pre_load
-    def strip_whitespace(self, data, **kwargs):
-        for key in ("email", "first_name", "last_name"):
-            if key in data and isinstance(data[key], str):
-                data[key] = data[key].strip()
-        return data
-
-    @validates("password")
-    def validate_password(self, value):
-        error = validate_password_strength(value)
+    @field_validator("password")
+    @classmethod
+    def validate_pwd(cls, v):
+        error = validate_password_strength(v)
         if error:
-            raise ValidationError(error)
+            raise ValueError(error)
+        return v
 
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v):
+        if v not in ("recruiter", "interviewer", "candidate"):
+            raise ValueError("Role must be recruiter, interviewer, or candidate")
+        return v
 
-class UserLoginSchema(Schema):
-    """Input schema for POST /api/auth/login."""
-    email    = fields.Email(required=True)
-    password = fields.Str(required=True, load_only=True)
+class UserLoginSchema(BaseModel):
+    email: EmailStr
+    password: str
 
+class OAuthGoogleStartSchema(BaseModel):
+    supabase_access_token: str
 
-class OAuthGoogleStartSchema(Schema):
-    """Input schema for POST /api/auth/oauth/google."""
-    supabase_access_token = fields.Str(required=True, load_only=True)
+class OAuthGoogleCompleteSchema(BaseModel):
+    supabase_access_token: str
+    role: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
 
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v):
+        if v not in ("recruiter", "interviewer", "candidate"):
+            raise ValueError("Role must be recruiter, interviewer, or candidate")
+        return v
 
-class OAuthGoogleCompleteSchema(Schema):
-    """Input schema for POST /api/auth/oauth/google/complete."""
-    supabase_access_token = fields.Str(required=True, load_only=True)
-    role       = fields.Str(
-        required=True,
-        validate=validate.OneOf(["recruiter", "interviewer", "candidate"]),
-    )
-    first_name = fields.Str(validate=validate.Length(min=1, max=100), allow_none=True)
-    last_name  = fields.Str(validate=validate.Length(min=1, max=100), allow_none=True)
-    phone      = fields.Str(allow_none=True)
-
-
-class UserUpdateSchema(Schema):
-    """Input schema for PATCH /api/users/me."""
-    first_name = fields.Str(validate=validate.Length(min=1, max=100))
-    last_name  = fields.Str(validate=validate.Length(min=1, max=100))
-    phone      = fields.Str(allow_none=True)
-    avatar_url = fields.Str(allow_none=True)
+class UserUpdateSchema(BaseModel):
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    phone: Optional[str] = None
+    avatar_url: Optional[str] = None
