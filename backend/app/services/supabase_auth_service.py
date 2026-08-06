@@ -23,10 +23,13 @@ every request: PyJWT's PyJWKClient fetches and caches the public keys
 doesn't recognize yet (e.g. after Supabase rotates keys).
 """
 
+import logging
 import jwt
 from jwt import PyJWKClient
 from app.config import get_config
 from app.utils.errors import AuthenticationError
+
+logger = logging.getLogger(__name__)
 
 # One PyJWKClient per Supabase project URL, reused across requests so the
 # public keys are cached in memory instead of re-fetched every call.
@@ -62,7 +65,8 @@ class SupabaseAuthService:
         if not token:
             raise AuthenticationError("Missing Supabase access token.")
 
-        audience = current_app.config.get("SUPABASE_JWT_AUDIENCE", "authenticated")
+        cfg = get_config()
+        audience = cfg.SUPABASE_JWT_AUDIENCE or "authenticated"
 
         try:
             jwk_client = SupabaseAuthService._get_jwk_client()
@@ -77,7 +81,7 @@ class SupabaseAuthService:
         except jwt.ExpiredSignatureError:
             raise AuthenticationError("Google sign-in session has expired. Please try again.")
         except (jwt.PyJWKClientError, jwt.InvalidTokenError) as exc:
-            current_app.logger.warning("Supabase token verification failed: %s", exc)
+            logger.warning("Supabase token verification failed: %s", exc)
             raise AuthenticationError("Invalid Google sign-in session.")
 
         email = claims.get("email")
