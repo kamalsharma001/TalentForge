@@ -22,11 +22,21 @@ def create_app(config_class=None) -> FastAPI:
 
     # Configure CORS
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_headers=["Content-Type", "Authorization"],
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "https://talentforge-platform.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ],
+    allow_headers=["Content-Type", "Authorization"],
     )
 
     # Cloudinary Config
