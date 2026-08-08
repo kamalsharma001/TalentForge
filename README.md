@@ -50,8 +50,9 @@ TalentForge/
 │   │   ├── config.py          # App settings mapping environment variables
 │   │   ├── database.py        # SQLAlchemy engine and SessionLocal dependency
 │   │   └── dependencies.py    # Common Depends() helpers (JWT extraction, RoleChecker)
-│   ├── migrations/            # Alembic versions
-│   └── requirements.txt
+│   ├── migrations/            # Alembic versions subfolder
+│   ├── alembic.ini            # Alembic configuration
+│   └── requirements.txt       # Python dependencies
 │
 └── frontend/
     └── src/
