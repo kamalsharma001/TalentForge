@@ -93,8 +93,11 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
+  const [loggingOut, setLoggingOut] = useState(false)
+
   // LOGOUT
   const logout = useCallback(async () => {
+    setLoggingOut(true)
 
     try {
       await authService.logout()
@@ -102,10 +105,13 @@ export function AuthProvider({ children }) {
       console.warn("Logout request failed:", err)
     }
 
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    setUser(null)
-
+    // Brief 800ms delay for visual feedback before navigation
+    setTimeout(() => {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      setUser(null)
+      setLoggingOut(false)
+    }, 800)
   }, [])
 
   // Manual refresh user
@@ -127,10 +133,21 @@ export function AuthProvider({ children }) {
         register,
         logout,
         refreshUser,
-        setSessionFromAuthPayload
+        setSessionFromAuthPayload,
+        loggingOut
       }}
     >
       {children}
+      {loggingOut && (
+        <div className="fixed inset-0 bg-cream-100/80 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center gap-3 select-none animate-[fadeIn_0.2s_ease-out]">
+          {/* Minimal lock icon */}
+          <svg className="w-8 h-8 text-forest-900 animate-[pulse_1.5s_infinite]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <span className="text-sm font-semibold text-forest-900 tracking-wide">Signing out...</span>
+        </div>
+      )}
     </AuthContext.Provider>
   )
 }
