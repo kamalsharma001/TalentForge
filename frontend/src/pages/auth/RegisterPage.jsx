@@ -168,43 +168,50 @@ export default function RegisterPage() {
 
           <div className="relative">
             {/* floating seal badge, overlapping the top edge of the card */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30 w-12 h-12 rounded-2xl bg-forest-900 shadow-btn flex items-center justify-center animate-[slideUp_0.5s_ease-out]">
-              <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-white" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full bg-cream-50 shadow-card-hover flex items-center justify-center animate-[slideUp_0.5s_ease-out]">
+              <span className="w-10 h-10 rounded-full bg-forest-900 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235A8.91 8.91 0 0110.5 15a8.91 8.91 0 016.5 4.235M10.5 15a8.91 8.91 0 01-6.5 4.235" />
+                </svg>
+              </span>
             </div>
 
             {/* Rotating processing border line */}
             {authStatus === 'loading' && (
               <div className="absolute inset-0 -m-[3px] rounded-[19px] overflow-hidden pointer-events-none z-0">
-                <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#22c55e_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
+                <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#15803d_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
               </div>
             )}
 
             <div className="card shadow-card-hover pt-10 relative z-10 bg-white overflow-hidden">
               {/* Success / Failure Overlays */}
               {(authStatus === 'success' || authStatus === 'error') && (
-                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-2xl p-6 transition-all duration-300">
-                  {authStatus === 'success' ? (
-                    <div className="space-y-4 text-center">
-                      <svg className="w-24 h-24 text-emerald-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
-                        <circle className="checkmark-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
-                        <path className="checkmark-check" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7.5 7.5 16.5-16.5" fill="none" />
-                      </svg>
-                      <h3 className="text-2xl font-bold text-forest-900">Registration Successful!</h3>
-                      <p className="text-sm text-forest-500">Creating your account workspace...</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 text-center">
-                      <svg className="w-24 h-24 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
-                        <circle className="cross-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
-                        <path className="cross-line-1" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" d="M16 16l20 20" fill="none" />
-                        <path className="cross-line-2" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" d="M36 16L16 36" fill="none" />
-                      </svg>
-                      <h3 className="text-2xl font-bold text-red-600">Registration Failed</h3>
-                      <p className="text-sm text-forest-500">Please review the details and try again.</p>
-                    </div>
-                  )}
+                <div className="absolute inset-0 bg-cream-100/60 backdrop-blur-[3px] z-20 flex items-center justify-center p-6 select-none animate-[fadeIn_0.3s_ease-out]">
+                  <div className="bg-white rounded-3xl p-8 shadow-card-hover border border-cream-200 flex flex-col items-center justify-center text-center max-w-[280px] w-full animate-pop-badge">
+                    {authStatus === 'success' ? (
+                      <div className="space-y-4">
+                        <svg className="w-16 h-16 text-emerald-600 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" className="checkmark-circle-new" />
+                          <path d="M8 12l3 3 5-5" className="checkmark-check-new" />
+                        </svg>
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-bold text-forest-900">Success</h3>
+                          <p className="text-xs text-forest-500">Creating your account...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <svg className="w-16 h-16 text-red-500 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" className="cross-circle-new" />
+                          <path d="M15 9l-6 6M9 9l6 6" className="cross-lines-new" />
+                        </svg>
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-bold text-red-600">Failed</h3>
+                          <p className="text-xs text-forest-500">Please try again.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <h1 className="font-display text-3xl text-forest-900 mb-1 text-center">Create your account</h1>

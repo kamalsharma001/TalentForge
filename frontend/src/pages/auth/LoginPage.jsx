@@ -213,34 +213,39 @@ const handleGoogleLogin = async () => {
             {/* Rotating processing border line */}
             {authStatus === 'loading' && (
               <div className="absolute inset-0 -m-[3px] rounded-[19px] overflow-hidden pointer-events-none z-0">
-                <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#22c55e_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
+                <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#15803d_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
               </div>
             )}
 
             <div className="card shadow-card-hover pt-10 text-center relative z-10 bg-white overflow-hidden">
               {/* Success / Failure Overlays */}
               {(authStatus === 'success' || authStatus === 'error') && (
-                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-2xl p-6 transition-all duration-300">
-                  {authStatus === 'success' ? (
-                    <div className="space-y-4 text-center">
-                      <svg className="w-24 h-24 text-emerald-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
-                        <circle className="checkmark-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
-                        <path className="checkmark-check" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7.5 7.5 16.5-16.5" fill="none" />
-                      </svg>
-                      <h3 className="text-2xl font-bold text-forest-900">Sign in Successful!</h3>
-                      <p className="text-sm text-forest-500">Preparing your dashboard...</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 text-center">
-                      <svg className="w-24 h-24 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
-                        <circle className="cross-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
-                        <path className="cross-line-1" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" d="M16 16l20 20" fill="none" />
-                        <path className="cross-line-2" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" d="M36 16L16 36" fill="none" />
-                      </svg>
-                      <h3 className="text-2xl font-bold text-red-600">Access Denied</h3>
-                      <p className="text-sm text-forest-500">Incorrect email or password.</p>
-                    </div>
-                  )}
+                <div className="absolute inset-0 bg-cream-100/60 backdrop-blur-[3px] z-20 flex items-center justify-center p-6 select-none animate-[fadeIn_0.3s_ease-out]">
+                  <div className="bg-white rounded-3xl p-8 shadow-card-hover border border-cream-200 flex flex-col items-center justify-center text-center max-w-[280px] w-full animate-pop-badge">
+                    {authStatus === 'success' ? (
+                      <div className="space-y-4">
+                        <svg className="w-16 h-16 text-emerald-600 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" className="checkmark-circle-new" />
+                          <path d="M8 12l3 3 5-5" className="checkmark-check-new" />
+                        </svg>
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-bold text-forest-900">Success</h3>
+                          <p className="text-xs text-forest-500">Preparing dashboard...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <svg className="w-16 h-16 text-red-500 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" className="cross-circle-new" />
+                          <path d="M15 9l-6 6M9 9l6 6" className="cross-lines-new" />
+                        </svg>
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-bold text-red-600">Access Denied</h3>
+                          <p className="text-xs text-forest-500">Please try again.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <h1 className="font-display text-3xl text-forest-900 mb-1">

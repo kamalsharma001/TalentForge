@@ -93,11 +93,8 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  const [loggingOut, setLoggingOut] = useState(false)
-
   // LOGOUT
   const logout = useCallback(async () => {
-    setLoggingOut(true)
 
     try {
       await authService.logout()
@@ -105,14 +102,10 @@ export function AuthProvider({ children }) {
       console.warn("Logout request failed:", err)
     }
 
-    // Delay session clear by 1.2s to show premium signing out animation
-    setTimeout(() => {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      setUser(null)
-      setLoggingOut(false)
-      toast.success("Successfully logged out.")
-    }, 1200)
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    setUser(null)
+
   }, [])
 
   // Manual refresh user
@@ -134,28 +127,10 @@ export function AuthProvider({ children }) {
         register,
         logout,
         refreshUser,
-        setSessionFromAuthPayload,
-        loggingOut
+        setSessionFromAuthPayload
       }}
     >
       {children}
-      {loggingOut && (
-        <div className="fixed inset-0 bg-forest-950/90 backdrop-blur-md z-[9999] flex flex-col items-center justify-center text-center p-6 select-none animate-[fadeIn_0.3s_ease-out]">
-          <div className="w-full max-w-md space-y-6">
-            {/* Spinning loader animation */}
-            <div className="relative w-20 h-20 mx-auto">
-              {/* Outer rotating forest ring */}
-              <div className="absolute inset-0 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin" />
-              {/* Inner counter-rotating amber ring */}
-              <div className="absolute inset-2 border-4 border-amber-400/20 border-b-amber-400 rounded-full animate-[spin_1.2s_linear_infinite_reverse]" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-3xl font-display font-extrabold text-white">Signing out</h3>
-              <p className="text-forest-200 text-sm animate-pulse">Safely clearing your session and workspace...</p>
-            </div>
-          </div>
-        </div>
-      )}
     </AuthContext.Provider>
   )
 }

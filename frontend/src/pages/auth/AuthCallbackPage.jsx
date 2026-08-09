@@ -141,19 +141,21 @@ export default function AuthCallbackPage() {
           {/* Rotating processing border line */}
           {status === 'loading' && (
             <div className="absolute inset-0 -m-[3px] rounded-[19px] overflow-hidden pointer-events-none z-0">
-              <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#22c55e_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
+              <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#15803d_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
             </div>
           )}
 
           <div className="card shadow-card-hover pt-12 pb-10 text-center relative z-10 bg-white overflow-hidden min-h-[300px] flex flex-col items-center justify-center">
             {status === 'success' ? (
-              <div className="space-y-4 text-center animate-fade-in">
-                <svg className="w-24 h-24 text-emerald-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
-                  <circle className="checkmark-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
-                  <path className="checkmark-check" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7.5 7.5 16.5-16.5" fill="none" />
+              <div className="space-y-4 text-center animate-pop-badge">
+                <svg className="w-16 h-16 text-emerald-600 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" className="checkmark-circle-new" />
+                  <path d="M8 12l3 3 5-5" className="checkmark-check-new" />
                 </svg>
-                <h3 className="text-2xl font-bold text-forest-900 font-display">Preparing Dashboard</h3>
-                <p className="text-sm text-forest-500">Finishing up and loading your workspace...</p>
+                <div className="space-y-1">
+                  <h3 className="text-xl font-bold text-forest-900 font-display">Success</h3>
+                  <p className="text-xs text-forest-500">Preparing dashboard...</p>
+                </div>
               </div>
             ) : (
               <div className="space-y-5 text-center">
