@@ -67,7 +67,7 @@ export default function AuthCallbackPage() {
         return
       }
 
-      const token = data.session.access_token
+       const token = data.session.access_token
 
       try {
         const result = await authService.oauthGoogleStart(token)
@@ -82,7 +82,12 @@ export default function AuthCallbackPage() {
         }
 
         const user = setSessionFromAuthPayload(result)
-        redirectToDashboard(user)
+        
+        // Show success animation before redirect
+        setStatus('success')
+        setTimeout(() => {
+          redirectToDashboard(user)
+        }, 1500)
       } catch (err) {
         if (cancelled) return
         toast.error(err?.response?.data?.error || 'Google sign-in failed.')
@@ -107,19 +112,58 @@ export default function AuthCallbackPage() {
         last_name: pendingProfile?.last_name,
       })
       const user = setSessionFromAuthPayload(result)
-      toast.success(`Account created! Welcome, ${user.first_name}!`)
-      redirectToDashboard(user)
+      
+      // Show success animation before redirect
+      setStatus('success')
+      setTimeout(() => {
+        toast.success(`Account created! Welcome, ${user.first_name}!`)
+        redirectToDashboard(user)
+      }, 1500)
     } catch (err) {
       toast.error(err?.response?.data?.error || 'Could not finish signing up')
-    } finally {
       setSubmitting(false)
     }
   }
 
-  if (status === 'loading') {
+  if (status === 'loading' || status === 'success') {
     return (
       <div className="min-h-screen bg-cream-100 flex items-center justify-center p-6">
-        <div className="text-forest-700 font-sans">Signing you in with Google…</div>
+        <div className="w-full max-w-md animate-slide-up relative">
+          {/* floating seal badge, overlapping the top edge of the card */}
+          <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full bg-cream-50 shadow-card-hover flex items-center justify-center">
+            <span className="w-10 h-10 rounded-full bg-forest-900 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5 1c0 4.5-3.5 8.25-8 9.5-4.5-1.25-8-5-8-9.5V6l8-3 8 3v5z" />
+              </svg>
+            </span>
+          </div>
+
+          {/* Rotating processing border line */}
+          {status === 'loading' && (
+            <div className="absolute inset-0 -m-[3px] rounded-[19px] overflow-hidden pointer-events-none z-0">
+              <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#22c55e_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
+            </div>
+          )}
+
+          <div className="card shadow-card-hover pt-12 pb-10 text-center relative z-10 bg-white overflow-hidden min-h-[300px] flex flex-col items-center justify-center">
+            {status === 'success' ? (
+              <div className="space-y-4 text-center animate-fade-in">
+                <svg className="w-24 h-24 text-emerald-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
+                  <circle className="checkmark-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
+                  <path className="checkmark-check" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7.5 7.5 16.5-16.5" fill="none" />
+                </svg>
+                <h3 className="text-2xl font-bold text-forest-900 font-display">Preparing Dashboard</h3>
+                <p className="text-sm text-forest-500">Finishing up and loading your workspace...</p>
+              </div>
+            ) : (
+              <div className="space-y-5 text-center">
+                <div className="w-14 h-14 border-4 border-forest-100 border-t-forest-700 rounded-full animate-spin mx-auto mb-2" />
+                <h3 className="text-2xl font-bold text-forest-900 font-display">Verifying Account</h3>
+                <p className="text-sm text-forest-500 animate-pulse">Communicating with Google OAuth and loading your TalentForge profile...</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     )
   }

@@ -20,58 +20,55 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
+  const [authStatus, setAuthStatus] = useState('idle') // 'idle' | 'loading' | 'success' | 'error'
 
   const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (loading) return
 
-  e.preventDefault()
+    setLoading(true)
+    setAuthStatus('loading')
 
-  if (loading) return
+    try {
+      const user = await login(form.email, form.password)
+      let role = user?.role
+      if (role && role.includes(".")) {
+        role = role.split(".")[1]
+      }
 
-  setLoading(true)
+      setAuthStatus('success')
 
-  try {
+      // Let the success animation play for 1.5s before redirecting
+      setTimeout(() => {
+        toast.success(`Welcome back, ${user.first_name}!`)
 
-    const user = await login(form.email, form.password)
+        // DIRECT REDIRECT
+        if (role === "candidate") {
+          navigate("/candidate", { replace: true })
+        } else if (role === "recruiter") {
+          navigate("/recruiter", { replace: true })
+        } else if (role === "interviewer") {
+          navigate("/interviewer", { replace: true })
+        } else if (role === "admin") {
+          navigate("/admin", { replace: true })
+        } else {
+          navigate("/", { replace: true })
+        }
+      }, 1500)
 
-    let role = user?.role
+    } catch (err) {
+      setAuthStatus('error')
+      const errorMsg = err?.response?.data?.error || "Invalid email or password"
 
-    if (role && role.includes(".")) {
-      role = role.split(".")[1]
+      // Let the error animation play for 2s, then clear inputs and restore edit state
+      setTimeout(() => {
+        setForm({ email: '', password: '' })
+        setAuthStatus('idle')
+        setLoading(false)
+        toast.error(errorMsg)
+      }, 2000)
     }
-
-    toast.success(`Welcome back, ${user.first_name}!`)
-
-    // DIRECT REDIRECT
-    if (role === "candidate") {
-      navigate("/candidate", { replace: true })
-    }
-
-    else if (role === "recruiter") {
-      navigate("/recruiter", { replace: true })
-    }
-
-    else if (role === "interviewer") {
-      navigate("/interviewer", { replace: true })
-    }
-
-    else if (role === "admin") {
-      navigate("/admin", { replace: true })
-    }
-
-    else {
-      navigate("/", { replace: true })
-    }
-
-  } catch (err) {
-
-    toast.error(err?.response?.data?.error || "Invalid email or password")
-
-  } finally {
-
-    setLoading(false)
-
   }
-}
 
 const [googleLoading, setGoogleLoading] = useState(false)
 
@@ -205,7 +202,7 @@ const handleGoogleLogin = async () => {
 
           <div className="relative">
             {/* floating seal badge, overlapping the top edge of the card */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-10 w-14 h-14 rounded-full bg-cream-50 shadow-card-hover flex items-center justify-center">
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full bg-cream-50 shadow-card-hover flex items-center justify-center">
               <span className="w-10 h-10 rounded-full bg-forest-900 flex items-center justify-center">
                 <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5 1c0 4.5-3.5 8.25-8 9.5-4.5-1.25-8-5-8-9.5V6l8-3 8 3v5z" />
@@ -213,7 +210,39 @@ const handleGoogleLogin = async () => {
               </span>
             </div>
 
-            <div className="card shadow-card-hover pt-10 text-center">
+            {/* Rotating processing border line */}
+            {authStatus === 'loading' && (
+              <div className="absolute inset-0 -m-[3px] rounded-[19px] overflow-hidden pointer-events-none z-0">
+                <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#22c55e_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
+              </div>
+            )}
+
+            <div className="card shadow-card-hover pt-10 text-center relative z-10 bg-white overflow-hidden">
+              {/* Success / Failure Overlays */}
+              {(authStatus === 'success' || authStatus === 'error') && (
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-2xl p-6 transition-all duration-300">
+                  {authStatus === 'success' ? (
+                    <div className="space-y-4 text-center">
+                      <svg className="w-24 h-24 text-emerald-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
+                        <circle className="checkmark-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
+                        <path className="checkmark-check" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7.5 7.5 16.5-16.5" fill="none" />
+                      </svg>
+                      <h3 className="text-2xl font-bold text-forest-900">Sign in Successful!</h3>
+                      <p className="text-sm text-forest-500">Preparing your dashboard...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 text-center">
+                      <svg className="w-24 h-24 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
+                        <circle className="cross-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
+                        <path className="cross-line-1" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" d="M16 16l20 20" fill="none" />
+                        <path className="cross-line-2" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" d="M36 16L16 36" fill="none" />
+                      </svg>
+                      <h3 className="text-2xl font-bold text-red-600">Access Denied</h3>
+                      <p className="text-sm text-forest-500">Incorrect email or password.</p>
+                    </div>
+                  )}
+                </div>
+              )}
               <h1 className="font-display text-3xl text-forest-900 mb-1">
                 Welcome back <span aria-hidden="true">👋</span>
               </h1>
