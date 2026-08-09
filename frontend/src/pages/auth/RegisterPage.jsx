@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [showPw,  setShowPw]  = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [authStatus, setAuthStatus] = useState('idle') // 'idle' | 'loading' | 'success' | 'error'
 
   const handleGoogleSignup = async () => {
     if (googleLoading) return
@@ -49,15 +50,23 @@ export default function RegisterPage() {
       return
     }
     setLoading(true)
+    setAuthStatus('loading')
     try {
       const user = await register(form)
-      toast.success(`Account created! Welcome, ${user.first_name}!`)
-      navigate(ROLE_DASHBOARDS[user.role] || '/')
+      setAuthStatus('success')
+      setTimeout(() => {
+        toast.success(`Account created! Welcome, ${user.first_name}!`)
+        navigate(ROLE_DASHBOARDS[user.role] || '/')
+      }, 1500)
     } catch (err) {
+      setAuthStatus('error')
       const msg = err?.response?.data?.error || err?.response?.data?.errors?.email?.[0] || 'Registration failed'
-      toast.error(msg)
-    } finally {
-      setLoading(false)
+      setTimeout(() => {
+        setForm(f => ({ ...f, password: '' }))
+        setAuthStatus('idle')
+        setLoading(false)
+        toast.error(msg)
+      }, 2000)
     }
   }
 
@@ -159,13 +168,45 @@ export default function RegisterPage() {
 
           <div className="relative">
             {/* floating seal badge, overlapping the top edge of the card */}
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-10 w-12 h-12 rounded-2xl bg-forest-900 shadow-btn flex items-center justify-center animate-[slideUp_0.5s_ease-out]">
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-30 w-12 h-12 rounded-2xl bg-forest-900 shadow-btn flex items-center justify-center animate-[slideUp_0.5s_ease-out]">
               <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6 text-white" stroke="currentColor" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
 
-            <div className="card shadow-card-hover pt-10">
+            {/* Rotating processing border line */}
+            {authStatus === 'loading' && (
+              <div className="absolute inset-0 -m-[3px] rounded-[19px] overflow-hidden pointer-events-none z-0">
+                <div className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_30%,#22c55e_50%,transparent_70%)] animate-[spin_1.5s_linear_infinite]" />
+              </div>
+            )}
+
+            <div className="card shadow-card-hover pt-10 relative z-10 bg-white overflow-hidden">
+              {/* Success / Failure Overlays */}
+              {(authStatus === 'success' || authStatus === 'error') && (
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-2xl p-6 transition-all duration-300">
+                  {authStatus === 'success' ? (
+                    <div className="space-y-4 text-center">
+                      <svg className="w-24 h-24 text-emerald-600 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
+                        <circle className="checkmark-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
+                        <path className="checkmark-check" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" d="M14 27l7.5 7.5 16.5-16.5" fill="none" />
+                      </svg>
+                      <h3 className="text-2xl font-bold text-forest-900">Registration Successful!</h3>
+                      <p className="text-sm text-forest-500">Creating your account workspace...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 text-center">
+                      <svg className="w-24 h-24 text-red-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 52 52">
+                        <circle className="cross-circle" cx="26" cy="26" r="25" stroke="currentColor" strokeWidth="3.5" fill="none" />
+                        <path className="cross-line-1" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" d="M16 16l20 20" fill="none" />
+                        <path className="cross-line-2" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" d="M36 16L16 36" fill="none" />
+                      </svg>
+                      <h3 className="text-2xl font-bold text-red-600">Registration Failed</h3>
+                      <p className="text-sm text-forest-500">Please review the details and try again.</p>
+                    </div>
+                  )}
+                </div>
+              )}
               <h1 className="font-display text-3xl text-forest-900 mb-1 text-center">Create your account</h1>
               <p className="text-forest-500 text-sm mb-6 text-center">
                 Already have one?{' '}
