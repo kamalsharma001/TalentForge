@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, List
+from app.schemas.report_schema import InterviewReportResponse
 
 class InterviewScoreResponse(BaseModel):
     id: UUID
@@ -24,7 +25,7 @@ class InterviewCreateRequest(BaseModel):
     job_role: Optional[str] = None
     candidate_id: Optional[UUID] = None
     candidate_email: Optional[EmailStr] = None
-    organization_id: UUID
+    organization_id: Optional[UUID] = None
     tech_stack: List[str] = Field(default_factory=list)
     difficulty: str = "medium"
     duration_mins: int = Field(60, ge=15, le=240)
@@ -82,6 +83,7 @@ class InterviewResponse(BaseModel):
     interviewer_id: Optional[UUID] = None
     requested_by_id: Optional[UUID] = None
     scores: List[InterviewScoreResponse] = Field(default_factory=list)
+    report: Optional[InterviewReportResponse] = None
 
     class Config:
         from_attributes = True

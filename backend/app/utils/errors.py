@@ -46,6 +46,29 @@ class ConflictError(AppError):
     status_code = 409
     code        = "conflict"
 
+class OverlapConflictError(AppError):
+    status_code = 409
+    code        = "overlap_conflict"
+
+    def __init__(self, message: str, conflicting_slot_id: str, is_booked: bool, start_time: str, end_time: str):
+        super().__init__(message)
+        self.conflicting_slot_id = conflicting_slot_id
+        self.is_booked = is_booked
+        self.start_time = start_time
+        self.end_time = end_time
+
+    def to_dict(self) -> dict:
+        return {
+            "error": self.message,
+            "code": self.code,
+            "conflicting_slot": {
+                "id": self.conflicting_slot_id,
+                "is_booked": self.is_booked,
+                "start_time": self.start_time,
+                "end_time": self.end_time
+            }
+        }
+
 class ServiceUnavailableError(AppError):
     status_code = 503
     code        = "service_unavailable"

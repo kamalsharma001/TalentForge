@@ -35,6 +35,30 @@ export default function InterviewerDashboard() {
           illustration="default"
         />
 
+        {user?.approval_status === 'PENDING' && (
+          <div className="card-yellow border-amber-200 mb-6 flex items-start gap-3 p-4 rounded-xl">
+            <span className="text-lg">⏳</span>
+            <div>
+              <p className="font-semibold text-forest-900 text-sm">Account Awaiting Approval</p>
+              <p className="text-forest-600 text-sm">
+                Your interviewer account is currently awaiting admin verification. You will be able to provide availability once your account is approved.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {user?.approval_status === 'REJECTED' && (
+          <div className="bg-red-50 border border-red-200 mb-6 flex items-start gap-3 p-4 rounded-xl">
+            <span className="text-lg">❌</span>
+            <div>
+              <p className="font-semibold text-red-900 text-sm">Account Rejected/Suspended</p>
+              <p className="text-red-700 text-sm">
+                Your interviewer account has been rejected or suspended. Please contact the administrator for details.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatsCard icon="📋" value={data?.total || 0} title="Total Assigned" subtitle="Interviews assigned to you" variant="green" />
           <StatsCard icon="📅" value={scheduled} title="Upcoming" subtitle="Interviews scheduled" />
@@ -59,11 +83,11 @@ export default function InterviewerDashboard() {
                       <p className="text-forest-500 text-xs">{format(new Date(iv.scheduled_at), 'MMM d, h:mma')}</p>
                     </div>
                     {iv.meeting_link && (
-                      <a href={iv.meeting_link} target="_blank" rel="noopener noreferrer"
+                      <Link to={`/interviews/${iv.id}/room`}
                         className="text-xs bg-forest-900 text-white px-3 py-1.5 rounded-full hover:bg-forest-800"
                         onClick={e => e.stopPropagation()}>
                         Join
-                      </a>
+                      </Link>
                     )}
                   </div>
                 ))}
@@ -98,6 +122,7 @@ export default function InterviewerDashboard() {
             icon="📅"
             title="Manage Availability"
             description="Update your availability and manage your interview schedule."
+            disabled={user?.approval_status !== 'APPROVED'}
           />
           <QuickActionCard
             to="/interviewer/reports"
@@ -105,6 +130,7 @@ export default function InterviewerDashboard() {
             title="Submit Report"
             description="Submit your interview reports and feedback."
             tone="amber"
+            disabled={user?.approval_status !== 'APPROVED'}
           />
         </div>
       </div>

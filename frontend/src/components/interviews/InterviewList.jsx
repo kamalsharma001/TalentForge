@@ -34,15 +34,13 @@ export default function InterviewList({ interviews, role }) {
           {/* Role specific actions */}
 
           {role === "interviewer" && iv.status === "scheduled" && iv.meeting_link && (
-            <a
-              href={iv.meeting_link}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              to={`/interviews/${iv.id}/room`}
               className="text-xs bg-amber-400 text-forest-900 font-bold px-3 py-1.5 rounded-full hover:bg-amber-300"
               onClick={e => e.stopPropagation()}
             >
               Join
-            </a>
+            </Link>
           )}
 
           {role === "interviewer" && iv.status === "report_pending" && (

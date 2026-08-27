@@ -18,6 +18,11 @@ def add_slot(
     db: Session = Depends(get_db),
     current_user: User = Depends(RoleChecker(["interviewer"])),
 ):
+    if current_user.approval_status != "APPROVED":
+        raise HTTPException(
+            status_code=403,
+            detail="Your interviewer account is currently awaiting admin verification. You will be able to provide availability once your account is approved."
+        )
     result = SchedulingService.add_slot(db, body.model_dump(), str(current_user.id))
     return result
 
@@ -27,6 +32,11 @@ def delete_slot(
     db: Session = Depends(get_db),
     current_user: User = Depends(RoleChecker(["interviewer"])),
 ):
+    if current_user.approval_status != "APPROVED":
+        raise HTTPException(
+            status_code=403,
+            detail="Your interviewer account is currently awaiting admin verification. You will be able to provide availability once your account is approved."
+        )
     SchedulingService.delete_slot(db, str(slot_id), str(current_user.id))
     return {"message": "Slot deleted"}
 

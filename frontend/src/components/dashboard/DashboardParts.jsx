@@ -159,13 +159,31 @@ export function DashboardPanel({ title, actionLabel, actionTo, onAction, childre
 /* ────────────────────────────────────────────────────────────────────────
    QuickActionCard — icon · title · description · arrow. Horizontal.
    ──────────────────────────────────────────────────────────────────── */
-export function QuickActionCard({ to, icon, title, description, tone = 'default' }) {
+export function QuickActionCard({ to, icon, title, description, tone = 'default', disabled, onClick }) {
   const iconWrap = tone === 'amber' ? 'bg-amber-400 text-forest-900' : 'bg-forest-100 text-forest-800'
   const cardCls = tone === 'amber' ? 'card-yellow border-amber-200' : 'card'
+
+  if (disabled) {
+    return (
+      <div
+        className={`${cardCls} flex items-center gap-4 opacity-60 cursor-not-allowed`}
+      >
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ${iconWrap}`}>
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-display font-semibold text-forest-900 truncate">{title}</p>
+          <p className="text-forest-500 text-sm mt-0.5 truncate">{description}</p>
+        </div>
+        <span className="text-forest-300 flex-shrink-0">→</span>
+      </div>
+    )
+  }
 
   return (
     <Link
       to={to}
+      onClick={onClick}
       className={`${cardCls} flex items-center gap-4 group hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200`}
     >
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-105 transition-transform duration-200 ${iconWrap}`}>

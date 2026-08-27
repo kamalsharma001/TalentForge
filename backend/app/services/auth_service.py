@@ -47,6 +47,7 @@ class AuthService:
             first_name=data["first_name"],
             last_name=data["last_name"],
             phone=data.get("phone"),
+            approval_status="PENDING" if role in (UserRole.recruiter, UserRole.interviewer) else "APPROVED",
         )
         user.set_password(data["password"])
         db.add(user)
@@ -131,6 +132,7 @@ class AuthService:
             phone=phone,
             avatar_url=profile.get("avatar_url"),
             is_verified=True,  # Google already verified this email address
+            approval_status="PENDING" if user_role in (UserRole.recruiter, UserRole.interviewer) else "APPROVED",
         )
         user.set_password(secrets.token_urlsafe(32))  # unusable random password
         db.add(user)

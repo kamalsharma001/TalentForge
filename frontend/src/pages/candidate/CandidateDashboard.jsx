@@ -68,8 +68,8 @@ export default function CandidateDashboard() {
                       </p>
                     </div>
                     {iv.meeting_link && (
-                      <a href={iv.meeting_link} target="_blank" rel="noopener noreferrer"
-                        className="btn-primary text-xs py-2 px-4">Join →</a>
+                      <Link to={`/interviews/${iv.id}/room`}
+                        className="btn-primary text-xs py-2 px-4">Join →</Link>
                     )}
                   </div>
                 ))}

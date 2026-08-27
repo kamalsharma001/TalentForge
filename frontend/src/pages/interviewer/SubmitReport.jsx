@@ -62,6 +62,9 @@ export default function SubmitReport() {
         notes: scores[d].notes || undefined,
       }))
 
+      // Persist the dimension scores
+      await interviewService.complete(selectedId, { scores: scorePayload })
+
       // create report placeholder so AI can attach feedback
       try {
         await reportService.getByInterview(selectedId)

@@ -5,9 +5,18 @@ import { useFetch } from '../../hooks'
 import { EmptyState, PageSpinner, ConfirmDialog } from '../../components/ui'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
+import { useAuth } from '../../context/AuthContext'
+import { useNavigate } from 'react-router-dom'
 
 export default function InterviewerSchedule() {
-  const { data, loading, refetch } = useFetch(() => scheduleService.listSlots({ available_only: false, per_page: 50 }))
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const { data, loading, refetch } = useFetch(() => {
+    if (user?.approval_status === 'APPROVED') {
+      return scheduleService.listSlots({ available_only: false, per_page: 50 })
+    }
+    return Promise.resolve({ items: [], total: 0 })
+  }, [user?.approval_status])
   const slots = data?.items || []
 
   const [form, setForm] = useState({ start_time: '', end_time: '', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
@@ -15,9 +24,13 @@ export default function InterviewerSchedule() {
   const [deleting,  setDeleting]  = useState(null)
   const [confirmId, setConfirmId] = useState(null)
 
+  const [overlapSlot, setOverlapSlot] = useState(null)
+  const [pendingNewSlot, setPendingNewSlot] = useState(null)
+
   const handleAdd = async (e) => {
     e.preventDefault()
     if (!form.start_time || !form.end_time) { toast.error('Both start and end times are required'); return }
+    if (new Date(form.start_time) <= new Date()) { toast.error('Availability must be scheduled for a future date and time'); return }
     if (new Date(form.end_time) <= new Date(form.start_time)) { toast.error('End time must be after start time'); return }
     setAdding(true)
     try {
@@ -30,9 +43,45 @@ export default function InterviewerSchedule() {
       setForm(f => ({ ...f, start_time: '', end_time: '' }))
       refetch()
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'Failed to add slot')
+      const errData = err?.response?.data
+      if (errData?.code === 'overlap_conflict' && errData?.conflicting_slot) {
+        // Trigger confirmation flow
+        setOverlapSlot(errData.conflicting_slot)
+        setPendingNewSlot({
+          start_time: form.start_time,
+          end_time: form.end_time,
+          timezone: form.timezone
+        })
+      } else {
+        toast.error(errData?.error || 'Failed to add slot')
+      }
     } finally {
       setAdding(false)
+    }
+  }
+
+  const handleResolveOverlap = async () => {
+    if (!overlapSlot || !pendingNewSlot) return
+    setAdding(true)
+    try {
+      // 1. Delete conflicting slot
+      await scheduleService.deleteSlot(overlapSlot.id)
+      
+      // 2. Create the new slot
+      await scheduleService.addSlot({
+        start_time: new Date(pendingNewSlot.start_time).toISOString(),
+        end_time:   new Date(pendingNewSlot.end_time).toISOString(),
+        timezone:   pendingNewSlot.timezone,
+      })
+      toast.success('Conflicting slot replaced and new slot added!')
+      setForm(f => ({ ...f, start_time: '', end_time: '' }))
+      refetch()
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to replace slot')
+    } finally {
+      setAdding(false)
+      setOverlapSlot(null)
+      setPendingNewSlot(null)
     }
   }
 
@@ -60,32 +109,49 @@ export default function InterviewerSchedule() {
           <p className="text-forest-500 text-sm mt-1">Add windows when you're available to conduct interviews</p>
         </div>
 
-        {/* Add slot form */}
-        <div className="card shadow-card-hover mb-6">
-          <h2 className="font-display text-lg text-forest-900 mb-4">Add Availability Slot</h2>
-          <form onSubmit={handleAdd} className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Start time</label>
-                <input className="input" type="datetime-local"
-                  value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} required />
-              </div>
-              <div>
-                <label className="label">End time</label>
-                <input className="input" type="datetime-local"
-                  value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} required />
-              </div>
-            </div>
-            <div>
-              <label className="label">Timezone</label>
-              <input className="input" value={form.timezone}
-                onChange={e => setForm(f => ({ ...f, timezone: e.target.value }))} />
-            </div>
-            <button type="submit" disabled={adding} className="btn-primary">
-              {adding ? 'Adding…' : '+ Add Slot'}
+        {user?.approval_status !== 'APPROVED' ? (
+          <div className="card shadow-card-hover text-center py-10 px-6">
+            <span className="text-4xl mb-4 block">⏳</span>
+            <h2 className="font-display text-2xl text-forest-900 mb-2">Verification Required</h2>
+            <p className="text-forest-600 text-sm max-w-md mx-auto mb-6">
+              Your interviewer account is currently awaiting admin verification. You will be able to provide availability once your account is approved.
+            </p>
+            <button onClick={() => navigate('/interviewer/dashboard')} className="btn-primary">
+              Return to Dashboard
             </button>
-          </form>
-        </div>
+          </div>
+        ) : (
+          <>
+            {/* Add slot form */}
+            <div className="card shadow-card-hover mb-6">
+              <h2 className="font-display text-lg text-forest-900 mb-4">Add Availability Slot</h2>
+              <form onSubmit={handleAdd} className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Start time</label>
+                    <input className="input" type="datetime-local"
+                      min={new Date().toISOString().slice(0, 16)}
+                      value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} required />
+                  </div>
+                  <div>
+                    <label className="label">End time</label>
+                    <input className="input" type="datetime-local"
+                      min={new Date().toISOString().slice(0, 16)}
+                      value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} required />
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Timezone</label>
+                  <input className="input" value={form.timezone}
+                    onChange={e => setForm(f => ({ ...f, timezone: e.target.value }))} />
+                </div>
+                <button type="submit" disabled={adding} className="btn-primary">
+                  {adding ? 'Adding…' : '+ Add Slot'}
+                </button>
+              </form>
+            </div>
+          </>
+        )}
 
         {/* Slots list */}
         <div className="card">
@@ -97,7 +163,7 @@ export default function InterviewerSchedule() {
               description="Add your availability windows above so recruiters can book you" />
           ) : (
             <div className="space-y-2">
-              {slots.sort((a,b) => new Date(a.start_time) - new Date(b.start_time)).map(slot => (
+              {slots.sort((a,b) => new Date(b.start_time) - new Date(a.start_time)).map(slot => (
                 <div key={slot.id}
                   className={`flex items-center gap-4 p-3.5 rounded-xl border ${
                     slot.is_booked ? 'border-forest-200 bg-forest-50' : 'border-cream-200 hover:border-forest-300'
@@ -134,6 +200,16 @@ export default function InterviewerSchedule() {
         title="Remove Slot"
         message="Are you sure you want to remove this availability slot?"
         confirmLabel="Remove"
+        danger
+      />
+
+      <ConfirmDialog
+        open={!!overlapSlot}
+        onClose={() => { setOverlapSlot(null); setPendingNewSlot(null); }}
+        onConfirm={handleResolveOverlap}
+        title="Overlapping Availability"
+        message="You already have an overlapping availability slot. Would you like to delete the existing slot and create this new one?"
+        confirmLabel="Delete Existing & Create New"
         danger
       />
     </DashboardLayout>

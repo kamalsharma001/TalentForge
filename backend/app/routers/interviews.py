@@ -26,6 +26,13 @@ def create_interview(
     db: Session = Depends(get_db),
     current_user: User = Depends(RoleChecker(["admin", "recruiter"])),
 ):
+    if current_user.role.value == "recruiter":
+        if current_user.approval_status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Your recruiter account is currently awaiting admin verification. You will be able to create interviews once your account is approved."
+            )
+            
     result = InterviewService.create(db, body.model_dump(), str(current_user.id))
     return result
 
@@ -35,6 +42,7 @@ def list_interviews(
     per_page: int = Query(20, ge=1, le=100),
     status: Optional[str] = None,
     organization_id: Optional[UUID] = None,
+    candidate_id: Optional[UUID] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -42,15 +50,26 @@ def list_interviews(
     role = current_user.role.value
 
     if role == "recruiter":
-        kwargs["organization_id"] = str(organization_id) if organization_id else None
+        kwargs["requested_by_id"] = str(current_user.id)
+        if candidate_id:
+            kwargs["candidate_id"] = str(candidate_id)
     elif role == "interviewer":
         iv = db.query(Interviewer).filter(Interviewer.user_id == current_user.id).first()
         if iv:
             kwargs["interviewer_id"] = str(iv.id)
+        else:
+            kwargs["interviewer_id"] = "00000000-0000-0000-0000-000000000000"
     elif role == "candidate":
         c = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
         if c:
             kwargs["candidate_id"] = str(c.id)
+        else:
+            kwargs["candidate_id"] = "00000000-0000-0000-0000-000000000000"
+    elif role == "admin":
+        if organization_id:
+            kwargs["organization_id"] = str(organization_id)
+        if candidate_id:
+            kwargs["candidate_id"] = str(candidate_id)
 
     result = InterviewService.list_interviews(db, **kwargs)
     return result
@@ -61,6 +80,27 @@ def get_interview(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    interview_model = db.get(Interview, interview_id)
+    if not interview_model:
+        raise HTTPException(status_code=404, detail="Interview not found")
+
+    role = current_user.role.value
+    if role == "admin":
+        pass
+    elif role == "recruiter":
+        if str(interview_model.requested_by_id) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+    elif role == "interviewer":
+        iv = db.query(Interviewer).filter(Interviewer.user_id == current_user.id).first()
+        if not iv or str(interview_model.interviewer_id) != str(iv.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+    elif role == "candidate":
+        c = db.query(Candidate).filter(Candidate.user_id == current_user.id).first()
+        if not c or str(interview_model.candidate_id) != str(c.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+
     result = InterviewService.get_by_id(db, str(interview_id))
     return result
 
@@ -71,6 +111,20 @@ def update_interview(
     db: Session = Depends(get_db),
     current_user: User = Depends(RoleChecker(["admin", "recruiter"])),
 ):
+    interview = db.get(Interview, interview_id)
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+        
+    role = current_user.role.value
+    if role == "recruiter":
+        if current_user.approval_status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Your recruiter account is currently awaiting admin verification. You will be able to create interviews once your account is approved."
+            )
+        if str(interview.requested_by_id) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+            
     result = InterviewService.update(
         db,
         str(interview_id),
@@ -86,6 +140,20 @@ def assign_interviewer(
     db: Session = Depends(get_db),
     current_user: User = Depends(RoleChecker(["admin", "recruiter"])),
 ):
+    interview = db.get(Interview, interview_id)
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+        
+    role = current_user.role.value
+    if role == "recruiter":
+        if current_user.approval_status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Your recruiter account is currently awaiting admin verification. You will be able to create interviews once your account is approved."
+            )
+        if str(interview.requested_by_id) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+
     result = InterviewService.assign_interviewer(
         db,
         str(interview_id),
@@ -93,7 +161,6 @@ def assign_interviewer(
         str(body.slot_id),
     )
     # Trigger notifications
-    interview = db.get(Interview, interview_id)
     if interview:
         NotificationService.interview_scheduled(db, interview)
     return result
@@ -105,6 +172,11 @@ def complete_interview(
     db: Session = Depends(get_db),
     current_user: User = Depends(RoleChecker(["interviewer"])),
 ):
+    if current_user.approval_status != "APPROVED":
+        raise HTTPException(
+            status_code=403,
+            detail="Your interviewer account is currently awaiting admin verification. You will be able to provide availability once your account is approved."
+        )
     result = InterviewService.complete(
         db,
         str(interview_id),
@@ -120,6 +192,33 @@ def cancel_interview(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    interview = db.get(Interview, interview_id)
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+
+    role = current_user.role.value
+    if role == "admin":
+        pass
+    elif role == "recruiter":
+        if current_user.approval_status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Your recruiter account is currently awaiting admin verification. You will be able to create interviews once your account is approved."
+            )
+        if str(interview.requested_by_id) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden. Only admin or the requesting recruiter can cancel this interview.")
+
     reason = body.get("reason")
     result = InterviewService.cancel(db, str(interview_id), reason, str(current_user.id))
     return result
+
+@router.delete("/{interview_id}")
+def delete_interview(
+    interview_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(RoleChecker(["admin"])),
+):
+    InterviewService.delete_interview(db, str(interview_id))
+    return {"message": "Interview deleted successfully"}

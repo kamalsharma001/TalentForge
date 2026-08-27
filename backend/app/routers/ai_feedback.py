@@ -10,6 +10,8 @@ from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
+from app.models.interviewer import Interviewer
+
 @router.post("/{interview_id}/generate")
 def generate(
     interview_id: UUID,
@@ -20,15 +22,43 @@ def generate(
     Generate (or regenerate) AI feedback for a completed interview.
     Persists the result onto the associated InterviewReport.
     """
-    ai_data = AiFeedbackService.generate(db, str(interview_id))
     interview = db.get(Interview, interview_id)
-
     if not interview:
         raise HTTPException(status_code=404, detail="Interview not found")
 
+    role = current_user.role.value
+    if role == "admin":
+        pass
+    elif role == "recruiter":
+        if current_user.approval_status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Your recruiter account is currently awaiting admin verification. You will be able to create interviews once your account is approved."
+            )
+        if str(interview.requested_by_id) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+    elif role == "interviewer":
+        if current_user.approval_status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Your interviewer account is currently awaiting admin verification. You will be able to provide availability once your account is approved."
+            )
+        iv = db.query(Interviewer).filter(Interviewer.user_id == current_user.id).first()
+        if not iv or str(interview.interviewer_id) != str(iv.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden.")
+
+    ai_data = AiFeedbackService.generate(db, str(interview_id))
+
     # Create report automatically if it does not exist
     if not interview.report:
-        ReportService.create(db, str(interview.id), {}, str(current_user.id))
+        # Since ReportService.create expects the interviewer's user id, we pass the interviewer user id of the interview
+        # Or if generating as admin/recruiter, we find the interviewer user_id from the database
+        interviewer_user_id = str(current_user.id)
+        if role != "interviewer" and interview.interviewer:
+            interviewer_user_id = str(interview.interviewer.user_id)
+        ReportService.create(db, str(interview.id), {}, interviewer_user_id)
         db.refresh(interview)
 
     ReportService.attach_ai_summary(db, str(interview.report.id), ai_data)
@@ -53,6 +83,29 @@ def preview(
     interview = db.get(Interview, interview_id)
     if not interview:
         raise HTTPException(status_code=404, detail="Interview not found")
+
+    role = current_user.role.value
+    if role == "admin":
+        pass
+    elif role == "recruiter":
+        if current_user.approval_status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Your recruiter account is currently awaiting admin verification. You will be able to create interviews once your account is approved."
+            )
+        if str(interview.requested_by_id) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+    elif role == "interviewer":
+        if current_user.approval_status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Your interviewer account is currently awaiting admin verification. You will be able to provide availability once your account is approved."
+            )
+        iv = db.query(Interviewer).filter(Interviewer.user_id == current_user.id).first()
+        if not iv or str(interview.interviewer_id) != str(iv.id):
+            raise HTTPException(status_code=403, detail="Forbidden. You do not have access to this interview.")
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden.")
 
     report = interview.report
     if not report or not report.ai_summary:

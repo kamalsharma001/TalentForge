@@ -53,6 +53,7 @@ class User(Base):
     phone       = Column(String(30))
     is_active   = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    approval_status = Column(String(50), default="APPROVED", nullable=False)
 
     # ── Timestamps ────────────────────────────────────────────────────────
     created_at = Column(

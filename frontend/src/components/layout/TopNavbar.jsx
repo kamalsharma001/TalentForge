@@ -15,7 +15,7 @@ const NAV = {
   recruiter: [
     { to: '/recruiter/dashboard',  icon: '⬛', label: 'Overview'           },
     { to: '/recruiter/request',    icon: '➕', label: 'Interview Requests' },
-    { to: '/recruiter/interviews', icon: '📋', label: 'Candidates'         },
+    { to: '/recruiter/interviews', icon: '📋', label: 'Interviews'         },
     { to: '/recruiter/reports',    icon: '📊', label: 'Reports'            },
   ],
   interviewer: [

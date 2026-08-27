@@ -27,11 +27,37 @@ export default function RecruiterDashboard() {
           description="Track hiring progress and manage interviews."
           illustration="recruiter"
           actions={
-            <Link to="/recruiter/request" className="btn-primary">
-              + New Interview
-            </Link>
+            user?.approval_status === 'APPROVED' ? (
+              <Link to="/recruiter/request" className="btn-primary">
+                + New Interview
+              </Link>
+            ) : null
           }
         />
+
+        {user?.approval_status === 'PENDING' && (
+          <div className="card-yellow border-amber-200 mb-6 flex items-start gap-3 p-4 rounded-xl">
+            <span className="text-lg">⏳</span>
+            <div>
+              <p className="font-semibold text-forest-900 text-sm">Account Awaiting Approval</p>
+              <p className="text-forest-600 text-sm">
+                Your recruiter account is currently awaiting admin verification. You will be able to create interviews once your account is approved.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {user?.approval_status === 'REJECTED' && (
+          <div className="bg-red-50 border border-red-200 mb-6 flex items-start gap-3 p-4 rounded-xl">
+            <span className="text-lg">❌</span>
+            <div>
+              <p className="font-semibold text-red-900 text-sm">Account Rejected/Suspended</p>
+              <p className="text-red-700 text-sm">
+                Your recruiter account has been rejected or suspended. Please contact the administrator for details.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatsCard icon="📋" value={total} title="Total Interviews" subtitle="All requested interviews" variant="green" />
@@ -78,11 +104,12 @@ export default function RecruiterDashboard() {
             title="Create Interview"
             description="Choose tech stack and schedule a new interview."
             tone="amber"
+            disabled={user?.approval_status !== 'APPROVED'}
           />
           <QuickActionCard
             to="/recruiter/interviews"
             icon="📋"
-            title="View Candidates"
+            title="View Interviews"
             description="Browse candidates and interview pipeline."
           />
         </div>

@@ -29,15 +29,16 @@ api.interceptors.response.use(
 
       original._retry = true
 
+      const refresh = localStorage.getItem('refresh_token')
+
+      if (!refresh) {
+        console.warn("No refresh token available — logging out")
+        localStorage.removeItem("access_token")
+        window.dispatchEvent(new Event('auth-logout'))
+        return Promise.reject(error)
+      }
+
       try {
-
-        const refresh = localStorage.getItem('refresh_token')
-
-        if (!refresh) {
-          console.warn("No refresh token available — using existing access token")
-          return Promise.reject(error)
-        }
-
         const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {
           refresh_token: refresh
         })
@@ -55,6 +56,7 @@ api.interceptors.response.use(
 
         localStorage.removeItem("access_token")
         localStorage.removeItem("refresh_token")
+        window.dispatchEvent(new Event('auth-logout'))
 
         return Promise.reject(err)
       }

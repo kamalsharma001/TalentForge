@@ -52,4 +52,19 @@ export const userService = {
     const res = await api.patch(`/users/${id}/deactivate`)
     return res.data
   },
+
+  async approveUser(id) {
+    const res = await api.patch(`/users/${id}/approve`)
+    return res.data
+  },
+
+  async rejectUser(id) {
+    const res = await api.patch(`/users/${id}/reject`)
+    return res.data
+  },
+
+  async deleteUser(id) {
+    const res = await api.delete(`/users/${id}`)
+    return res.data
+  },
 }

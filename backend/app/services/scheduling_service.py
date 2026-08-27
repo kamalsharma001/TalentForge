@@ -26,6 +26,15 @@ class SchedulingService:
         start = data["start_time"]
         end   = data["end_time"]
 
+        # Validate availability starts in the future
+        current_time = datetime.now(timezone.utc)
+        start_dt = start
+        if start_dt.tzinfo is None:
+            start_dt = start_dt.replace(tzinfo=timezone.utc)
+
+        if start_dt <= current_time:
+            raise ValidationError("Availability must be scheduled for a future date and time.")
+
         if end <= start:
             raise ValidationError("end_time must be after start_time.")
 
@@ -33,15 +42,24 @@ class SchedulingService:
         if duration < 15:
             raise ValidationError("Slot must be at least 15 minutes long.")
 
-        # Overlap check
+        # Overlap check (including booked and unbooked)
         overlap = db.query(AvailabilitySlot).filter(
             AvailabilitySlot.interviewer_id == interviewer.id,
-            AvailabilitySlot.is_booked == False,
             AvailabilitySlot.start_time < end,
             AvailabilitySlot.end_time > start,
         ).first()
         if overlap:
-            raise ConflictError("This slot overlaps with an existing availability window.")
+            if overlap.is_booked:
+                raise ConflictError("This slot overlaps with an existing booked slot and cannot be replaced.")
+            else:
+                from app.utils.errors import OverlapConflictError
+                raise OverlapConflictError(
+                    "You already have an overlapping availability slot.",
+                    str(overlap.id),
+                    overlap.is_booked,
+                    overlap.start_time.isoformat(),
+                    overlap.end_time.isoformat()
+                )
 
         slot = AvailabilitySlot(
             interviewer_id=interviewer.id,
@@ -99,7 +117,7 @@ class SchedulingService:
         if to_date:
             query = query.filter(AvailabilitySlot.end_time <= to_date)
 
-        query = query.order_by(AvailabilitySlot.start_time.asc())
+        query = query.order_by(AvailabilitySlot.start_time.desc())
 
         res = paginate_query(query, page, per_page)
         # Serialize response items

@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     phone: Optional[str] = None
     is_active: bool
     is_verified: bool
+    approval_status: str
     created_at: datetime
 
     class Config:

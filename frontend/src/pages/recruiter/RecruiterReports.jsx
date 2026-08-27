@@ -3,16 +3,21 @@ import DashboardLayout from '../../components/layout/DashboardLayout'
 import { useInterviews } from '../../hooks'
 import { DecisionBadge, EmptyState, PageSpinner } from '../../components/ui'
 import { format } from 'date-fns'
+import { useAuth } from '../../context/AuthContext'
 
 export default function RecruiterReports() {
+  const { user } = useAuth()
   const { data, loading } = useInterviews({ per_page: 50 })
   const interviews = (data?.items || []).filter(iv => iv.report)
+
+  const roleKey = user?.role?.toLowerCase()?.replace('userrole.', '')
+  const roleLabel = roleKey === 'admin' ? 'Admin' : 'Recruiter'
 
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto animate-fade-in">
         <div className="mb-6">
-          <p className="section-label">Recruiter</p>
+          <p className="section-label">{roleLabel}</p>
           <h1 className="font-display text-3xl text-forest-900">Reports</h1>
         </div>
 

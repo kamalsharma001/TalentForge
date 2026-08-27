@@ -35,6 +35,11 @@ const interviewService = {
     const res = await api.post(`/interviews/${id}/cancel`, { reason })
     return res.data
   },
+
+  async delete(id) {
+    const res = await api.delete(`/interviews/${id}`)
+    return res.data
+  },
 }
 
 export default interviewService

@@ -348,17 +348,7 @@ const handleGoogleLogin = async () => {
                 {googleLoading ? 'Redirecting...' : 'Continue with Google'}
               </button>
 
-              {/* Demo accounts */}
-              <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-xl text-left">
-                <p className="text-xs font-semibold text-amber-700 mb-2">Demo accounts</p>
 
-                <div className="space-y-1 text-xs text-amber-600 font-mono">
-                  <p>admin@gmail.com / Admin@123</p>
-                  <p>recruiter123@gmail.com / Recruiter@123</p>
-                  <p>interviewer123@gmail.com / Interviewer@123</p>
-                  <p>candidate123@gmail.com / Candidate@123</p>
-                </div>
-              </div>
 
               <p className="text-forest-500 text-sm mt-6">
                 Don't have an account?{' '}

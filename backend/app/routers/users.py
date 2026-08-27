@@ -4,7 +4,7 @@ from uuid import UUID
 from typing import List, Optional
 from app.database import get_db
 from app.dependencies import get_current_user, RoleChecker
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.candidate import Candidate
 from app.models.interviewer import Interviewer
 from app.schemas.user_schema import UserResponse, UserUpdateSchema
@@ -34,12 +34,15 @@ def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     role: Optional[str] = None,
+    approval_status: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(RoleChecker(["admin"])),
 ):
     query = db.query(User)
     if role:
         query = query.filter(User.role == role)
+    if approval_status:
+        query = query.filter(User.approval_status == approval_status)
     query = query.order_by(User.created_at.desc())
 
     res = paginate_query(query, page, per_page)
@@ -52,6 +55,32 @@ def list_users(
         "pages": res["pages"],
         "per_page": res["per_page"],
     }
+
+@router.get("/interviewers")
+def list_interviewers(
+    approved_only: bool = Query(True),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(RoleChecker(["admin", "recruiter"])),
+):
+    query = db.query(Interviewer)
+    if approved_only:
+        query = query.filter(Interviewer.is_approved == True, Interviewer.is_available == True)
+
+    interviewers = query.all()
+    result = []
+    for iv in interviewers:
+        result.append({
+            "id":               str(iv.id),
+            "user_id":          str(iv.user_id),
+            "full_name":        iv.user.full_name,
+            "domains":          iv.domains,
+            "tech_stack":       iv.tech_stack,
+            "years_of_exp":     iv.years_of_exp,
+            "avg_rating":       float(iv.avg_rating) if iv.avg_rating else None,
+            "total_interviews": iv.total_interviews,
+            "is_available":     iv.is_available,
+        })
+    return result
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(
@@ -90,32 +119,6 @@ def activate_user(
     db.commit()
     return {"message": "User activated"}
 
-@router.get("/interviewers")
-def list_interviewers(
-    approved_only: bool = Query(True),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(RoleChecker(["admin", "recruiter"])),
-):
-    query = db.query(Interviewer)
-    if approved_only:
-        query = query.filter(Interviewer.is_approved == True, Interviewer.is_available == True)
-
-    interviewers = query.all()
-    result = []
-    for iv in interviewers:
-        result.append({
-            "id":               str(iv.id),
-            "user_id":          str(iv.user_id),
-            "full_name":        iv.user.full_name,
-            "domains":          iv.domains,
-            "tech_stack":       iv.tech_stack,
-            "years_of_exp":     iv.years_of_exp,
-            "avg_rating":       float(iv.avg_rating) if iv.avg_rating else None,
-            "total_interviews": iv.total_interviews,
-            "is_available":     iv.is_available,
-        })
-    return result
-
 @router.patch("/interviewers/{interviewer_id}/approve")
 def approve_interviewer(
     interviewer_id: UUID,
@@ -126,5 +129,83 @@ def approve_interviewer(
     if not interviewer:
         raise HTTPException(status_code=404, detail="Interviewer not found")
     interviewer.is_approved = True
+    # Keep User.approval_status synchronized
+    if interviewer.user:
+        interviewer.user.approval_status = "APPROVED"
     db.commit()
     return {"message": "Interviewer approved"}
+
+@router.patch("/{user_id}/approve")
+def approve_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(RoleChecker(["admin"])),
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.approval_status = "APPROVED"
+    if user.role == UserRole.interviewer:
+        iv = db.query(Interviewer).filter(Interviewer.user_id == user.id).first()
+        if iv:
+            iv.is_approved = True
+    db.commit()
+    return {"message": "User approved successfully"}
+
+@router.patch("/{user_id}/reject")
+def reject_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(RoleChecker(["admin"])),
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.approval_status = "REJECTED"
+    if user.role == UserRole.interviewer:
+        iv = db.query(Interviewer).filter(Interviewer.user_id == user.id).first()
+        if iv:
+            iv.is_approved = False
+    db.commit()
+    return {"message": "User rejected successfully"}
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(RoleChecker(["admin"])),
+):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if user.role == UserRole.candidate and user.candidate_profile:
+        from app.models.interview import Interview
+        from app.models.availability_slot import AvailabilitySlot
+        interviews = db.query(Interview).filter(Interview.candidate_id == user.candidate_profile.id).all()
+        for interview in interviews:
+            db.query(AvailabilitySlot).filter(AvailabilitySlot.interview_id == interview.id).update(
+                {AvailabilitySlot.interview_id: None, AvailabilitySlot.is_booked: False},
+                synchronize_session=False
+            )
+            db.delete(interview)
+
+    elif user.role == UserRole.interviewer and user.interviewer_profile:
+        from app.models.interview import Interview, InterviewStatus
+        from app.models.availability_slot import AvailabilitySlot
+        interviews = db.query(Interview).filter(
+            Interview.interviewer_id == user.interviewer_profile.id,
+            Interview.status == InterviewStatus.scheduled
+        ).all()
+        for interview in interviews:
+            db.query(AvailabilitySlot).filter(AvailabilitySlot.interview_id == interview.id).update(
+                {AvailabilitySlot.interview_id: None, AvailabilitySlot.is_booked: False},
+                synchronize_session=False
+            )
+            interview.status = InterviewStatus.cancelled
+            interview.cancellation_reason = "Assigned interviewer was deleted from the platform."
+            interview.interviewer_id = None
+
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully"}

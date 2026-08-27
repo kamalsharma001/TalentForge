@@ -9,6 +9,16 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      setUser(null)
+    }
+    window.addEventListener('auth-logout', handleAuthLogout)
+    return () => window.removeEventListener('auth-logout', handleAuthLogout)
+  }, [])
+
   // Restore session on page refresh
   useEffect(() => {
 

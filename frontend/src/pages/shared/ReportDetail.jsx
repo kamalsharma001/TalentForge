@@ -38,7 +38,7 @@ export default function ReportDetail() {
       toast.success('AI feedback generated!')
       refetch()
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'AI generation failed — check OPENAI_API_KEY')
+      toast.error(err?.response?.data?.error || 'Unable to generate AI feedback right now. Please try again.')
     } finally { setGenAI(false) }
   }
 
@@ -78,7 +78,7 @@ export default function ReportDetail() {
   }
 
   const canPublish  = ['admin','recruiter'].includes(role) && report && !report.is_published
-  const canEdit     = ['admin','recruiter','interviewer'].includes(role) && report && !report.is_published
+  const canEdit     = ['admin','interviewer'].includes(role) && report && !report.is_published
   const canGenAI    = ['admin','recruiter','interviewer'].includes(role)
   const isCandidate = role === 'candidate'
 

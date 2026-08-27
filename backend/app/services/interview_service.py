@@ -33,26 +33,47 @@ class InterviewService:
             if user:
                 candidate = db.query(Candidate).filter(Candidate.user_id == user.id).first()
 
-            # Create candidate if not found
-            if not candidate:
-                user = User(
-                    email=data["candidate_email"],
-                    role="candidate"
-                )
-                db.add(user)
-                db.flush()
-
-                candidate = Candidate(
-                    user_id=user.id
-                )
-                db.add(candidate)
-                db.flush()
-
-        if not candidate:
-            raise NotFoundError("Candidate not found.")
+        if not candidate or candidate.user.role.value != "candidate":
+            raise NotFoundError("Candidate not found. Please select a registered candidate from TalentForge.")
 
         data["candidate_id"] = candidate.id
         data.pop("candidate_email", None)
+
+        # Resolve organization_id dynamically if not provided
+        if not data.get("organization_id"):
+            from app.models.org_member import OrgMember
+            org_member = db.query(OrgMember).filter(OrgMember.user_id == requested_by_id).first()
+            if org_member:
+                data["organization_id"] = org_member.organization_id
+            else:
+                from app.models.organization import Organization
+                first_org = db.query(Organization).first()
+                if first_org:
+                    data["organization_id"] = first_org.id
+                else:
+                    raise NotFoundError("No organization found for recruiter.")
+
+        # Validate scheduled_at is in the future
+        scheduled_at = data.get("scheduled_at")
+        if scheduled_at:
+            if isinstance(scheduled_at, str):
+                from dateutil import parser
+                try:
+                    scheduled_dt = parser.isoparse(scheduled_at)
+                except ValueError:
+                    scheduled_dt = parser.parse(scheduled_at)
+            else:
+                scheduled_dt = scheduled_at
+
+            if scheduled_dt.tzinfo is None:
+                scheduled_dt = scheduled_dt.replace(tzinfo=timezone.utc)
+            
+            # Compare with current server time
+            current_time = datetime.now(timezone.utc)
+            if scheduled_dt <= current_time:
+                from app.utils.errors import ValidationError
+                raise ValidationError("Interview must be scheduled for a future date and time.")
+            data["scheduled_at"] = scheduled_dt
 
         interview = Interview(
             title=data["title"],
@@ -83,6 +104,7 @@ class InterviewService:
         organization_id: Optional[str] = None,
         candidate_id: Optional[str] = None,
         interviewer_id: Optional[str] = None,
+        requested_by_id: Optional[str] = None,
         status: Optional[str] = None,
         page: int = 1,
         per_page: int = 20,
@@ -95,6 +117,8 @@ class InterviewService:
             query = query.filter(Interview.candidate_id == candidate_id)
         if interviewer_id:
             query = query.filter(Interview.interviewer_id == interviewer_id)
+        if requested_by_id:
+            query = query.filter(Interview.requested_by_id == requested_by_id)
         if status:
             query = query.filter(Interview.status == InterviewStatus(status))
 
@@ -116,10 +140,29 @@ class InterviewService:
     # ── Get one ───────────────────────────────────────────────────────────
     @staticmethod
     def get_by_id(db: Session, interview_id: str) -> dict:
+        from datetime import timedelta
         interview = db.query(Interview).get(interview_id)
         if not interview:
             raise NotFoundError("Interview not found.")
-        return InterviewResponse.model_validate(interview).model_dump()
+
+        data = InterviewResponse.model_validate(interview).model_dump()
+
+        # Enforce 5-minute join window on backend
+        if interview.scheduled_at:
+            current_time = datetime.now(timezone.utc)
+            scheduled_at_aware = interview.scheduled_at
+            if scheduled_at_aware.tzinfo is None:
+                scheduled_at_aware = scheduled_at_aware.replace(tzinfo=timezone.utc)
+
+            join_allowed_from = scheduled_at_aware - timedelta(minutes=5)
+
+            # If not within the window, or if not scheduled status, hide meeting_link
+            if current_time < join_allowed_from or interview.status != InterviewStatus.scheduled:
+                data["meeting_link"] = None
+        else:
+            data["meeting_link"] = None
+
+        return data
 
     # ── Update ────────────────────────────────────────────────────────────
     @staticmethod
@@ -138,7 +181,11 @@ class InterviewService:
     # ── Assign interviewer + slot ─────────────────────────────────────────
     @staticmethod
     def assign_interviewer(db: Session, interview_id: str, interviewer_id: str, slot_id: str) -> dict:
-        interview = db.query(Interview).get(interview_id)
+        from app.utils.errors import ValidationError
+        from datetime import timedelta
+
+        # Select for update to prevent concurrent double-booking race conditions
+        interview = db.query(Interview).filter(Interview.id == interview_id).with_for_update().first()
         if not interview:
             raise NotFoundError("Interview not found.")
 
@@ -151,16 +198,54 @@ class InterviewService:
         if not interviewer or not interviewer.is_approved:
             raise NotFoundError("Approved interviewer not found.")
 
-        slot = db.query(AvailabilitySlot).get(slot_id)
+        slot = db.query(AvailabilitySlot).filter(AvailabilitySlot.id == slot_id).with_for_update().first()
         if not slot or str(slot.interviewer_id) != str(interviewer.id):
             raise NotFoundError("Availability slot not found for this interviewer.")
 
         if slot.is_booked:
             raise ConflictError("This slot is already booked.")
 
+        # Determine target interview time range
+        interview_start = interview.scheduled_at if interview.scheduled_at else slot.start_time
+        interview_end = interview_start + timedelta(minutes=interview.duration_mins)
+
+        # Make sure timezone offsets match for comparison
+        slot_start_aware = slot.start_time
+        if slot_start_aware.tzinfo is None:
+            slot_start_aware = slot_start_aware.replace(tzinfo=timezone.utc)
+        slot_end_aware = slot.end_time
+        if slot_end_aware.tzinfo is None:
+            slot_end_aware = slot_end_aware.replace(tzinfo=timezone.utc)
+
+        iv_start_aware = interview_start
+        if iv_start_aware.tzinfo is None:
+            iv_start_aware = iv_start_aware.replace(tzinfo=timezone.utc)
+        iv_end_aware = interview_end
+        if iv_end_aware.tzinfo is None:
+            iv_end_aware = iv_end_aware.replace(tzinfo=timezone.utc)
+
+        if not (slot_start_aware <= iv_start_aware and slot_end_aware >= iv_end_aware):
+            raise ValidationError("This interviewer is not available for the full duration of this interview.")
+
+        # Conflict check with other assigned interviews
+        conflicting_interview = db.query(Interview).filter(
+            Interview.interviewer_id == interviewer.id,
+            Interview.id != interview.id,
+            Interview.status.in_([InterviewStatus.scheduled, InterviewStatus.report_pending]),
+        ).all()
+
+        for conf in conflicting_interview:
+            conf_start = conf.scheduled_at
+            if conf_start.tzinfo is None:
+                conf_start = conf_start.replace(tzinfo=timezone.utc)
+            conf_end = conf_start + timedelta(minutes=conf.duration_mins)
+
+            if iv_start_aware < conf_end and iv_end_aware > conf_start:
+                raise ValidationError("This interviewer already has a conflicting interview during this time.")
+
         # Commit assignment atomically
         interview.interviewer_id = interviewer.id
-        interview.scheduled_at = slot.start_time
+        interview.scheduled_at = iv_start_aware
         interview.status = InterviewStatus.scheduled
         interview.meeting_link = f"https://meet.jit.si/talentforge-{str(interview.id)[:8]}"
 
@@ -178,8 +263,8 @@ class InterviewService:
         if not interview:
             raise NotFoundError("Interview not found.")
 
-        if interview.status != InterviewStatus.scheduled:
-            raise ConflictError("Only scheduled interviews can be completed.")
+        if interview.status not in (InterviewStatus.scheduled, InterviewStatus.report_pending):
+            raise ConflictError("Only scheduled or pending-report interviews can be completed.")
 
         interviewer = db.query(Interviewer).filter(Interviewer.user_id == interviewer_user_id).first()
         if not interviewer or str(interview.interviewer_id) != str(interviewer.id):
@@ -212,9 +297,10 @@ class InterviewService:
             interview.recording_cloudinary_id = data.get("recording_cloudinary_id")
             interview.recording_duration_s = data.get("recording_duration_s")
 
-        interview.status = InterviewStatus.report_pending
-        interview.completed_at = datetime.now(timezone.utc)
-        interviewer.total_interviews += 1
+        if interview.status == InterviewStatus.scheduled:
+            interview.status = InterviewStatus.report_pending
+            interview.completed_at = datetime.now(timezone.utc)
+            interviewer.total_interviews += 1
 
         db.commit()
         db.refresh(interview)
@@ -243,3 +329,18 @@ class InterviewService:
         db.commit()
         db.refresh(interview)
         return InterviewResponse.model_validate(interview).model_dump()
+
+    @staticmethod
+    def delete_interview(db: Session, interview_id: str) -> None:
+        interview = db.query(Interview).get(interview_id)
+        if not interview:
+            raise NotFoundError("Interview not found.")
+
+        # Free the slot if one was booked
+        db.query(AvailabilitySlot).filter(AvailabilitySlot.interview_id == interview.id).update(
+            {AvailabilitySlot.interview_id: None, AvailabilitySlot.is_booked: False},
+            synchronize_session=False
+        )
+
+        db.delete(interview)
+        db.commit()
