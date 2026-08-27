@@ -57,7 +57,7 @@ export default function RequestInterview() {
         difficulty: form.difficulty,
         duration_mins: form.duration_mins,
         instructions: form.instructions,
-        scheduled_at: form.scheduled_at || null,
+        scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
         timezone: form.timezone
       }
       const iv = await interviewService.create(payload)
