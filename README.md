@@ -121,23 +121,39 @@ Candidates have a dedicated preparation workspace designed around their target r
 TalentForge/
 ├── backend/
 │   ├── app/
-│   │   ├── routers/        # API route handlers
-│   │   ├── models/         # SQLAlchemy database models
-│   │   ├── schemas/        # Pydantic request/response schemas
-│   │   ├── services/       # Core business logic & AI integration
-│   │   ├── database.py     # Database session setup
-│   │   └── main.py         # FastAPI application entrypoint
-│   ├── migrations/         # Alembic database migrations
-│   └── requirements.txt    # Backend dependencies
+│   │   ├── routers/          # Authentication, interviews, scheduling, reports, AI preparation
+│   │   ├── models/           # Users, interviews, candidates, evaluations, resumes, AI sessions
+│   │   ├── schemas/          # Pydantic request/response schemas
+│   │   ├── services/         # Business logic, scheduling, evaluation & AI services
+│   │   ├── templates/        # AI interview and evaluation prompt templates
+│   │   ├── utils/            # Security, validation, errors & shared utilities
+│   │   ├── config.py         # Environment configuration
+│   │   ├── database.py       # SQLAlchemy database setup
+│   │   ├── dependencies.py   # Authentication, authorization & database dependencies
+│   │   └── main.py           # FastAPI application entrypoint
+│   ├── migrations/           # Alembic database migrations
+│   ├── requirements.txt      # Backend dependencies
+│   ├── run.py                # Development server entrypoint
+│   └── alembic.ini           # Alembic configuration
 │
 └── frontend/
     ├── src/
-    │   ├── components/     # Reusable UI components
-    │   ├── context/        # Auth & application state
-    │   ├── pages/          # Application views & dashboards
-    │   └── services/       # API client & HTTP interceptors
+    │   ├── components/       # Reusable UI, layouts & interview components
+    │   ├── context/          # Authentication & application state
+    │   ├── pages/
+    │   │   ├── auth/         # Authentication flows
+    │   │   ├── recruiter/    # Interview management workflows
+    │   │   ├── interviewer/  # Scheduling & evaluation workflows
+    │   │   ├── candidate/    # Interview tracking & preparation
+    │   │   ├── admin/        # Platform administration
+    │   │   └── shared/       # Shared interview, report & notification views
+    │   ├── services/         # API clients and service integrations
+    │   ├── App.jsx           # Application routing
+    │   └── main.jsx          # React entrypoint
     ├── index.html
-    └── package.json
+    ├── package.json
+    ├── vite.config.js
+    └── tailwind.config.js
 ```
 
 ---
