@@ -26,6 +26,7 @@ const NAV = {
   ],
   candidate: [
     { to: '/candidate/dashboard',        icon: '⬛', label: 'Overview'  },
+    { to: '/candidate/ai-prep',          icon: '🤖', label: 'AI Prep'   },
     { to: '/candidate/interviews',       icon: '📋', label: 'My Interviews' },
     { to: '/candidate/reports',          icon: '📊', label: 'Feedback'  },
     { to: '/candidate/profile',          icon: '👤', label: 'Profile'   },

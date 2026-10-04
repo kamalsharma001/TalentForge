@@ -190,6 +190,24 @@ Query params for GET `/`:
 
 ---
 
+## Candidate AI Prep & Mock Interviews  `/api/ai-prep`
+*Powered by Google Gemini (default: `gemini-2.5-flash-lite`)*
+
+| Method | Path | Roles | Description |
+|--------|------|-------|-------------|
+| GET | `/context` | candidate | Candidate interviews & skills context |
+| POST | `/plan` | candidate | Strategic preparation roadmap |
+| POST | `/questions/generate` | candidate | Role-specific practice questions |
+| POST | `/questions/evaluate` | candidate | Instant AI answer evaluation |
+| POST | `/mock/start` | candidate | Start live AI mock interview session |
+| GET | `/mock/sessions` | candidate | List candidate mock sessions |
+| GET | `/mock/<id>` | candidate | Mock interview transcript & details |
+| POST | `/mock/<id>/message` | candidate | Send candidate answer & receive adaptive follow-up |
+| POST | `/mock/<id>/end` | candidate | Conclude session & generate 4-dimension rubric |
+| GET | `/mock/<id>/report` | candidate | Retrieve finalized performance report |
+
+---
+
 ## Common Response Formats
 
 ### Pagination envelope

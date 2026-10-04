@@ -31,6 +31,10 @@ class Resume(Base):
 
     is_primary = Column(Boolean, default=False, nullable=False)
 
+    # ── Text & Structured Analysis ────────────────────────────────────────
+    extracted_text  = Column(Text, nullable=True)     # Raw text extracted from PDF/DOCX
+    parsed_data     = Column(Text, nullable=True)     # JSON string of structured resume analysis
+
     uploaded_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

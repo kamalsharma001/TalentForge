@@ -9,10 +9,38 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Ensure outbound connections (Supabase, Gemini, Cloudinary) succeed even if
+# the local network adapter's DHCP DNS server fails to resolve external hostnames.
+try:
+    import socket
+    import dns.resolver
+
+    _orig_getaddrinfo = socket.getaddrinfo
+    _resolver = dns.resolver.Resolver(configure=False)
+    _resolver.nameservers = ["8.8.8.8", "1.1.1.1"]
+    _resolver.timeout = 3.0
+    _resolver.lifetime = 5.0
+
+    def _fallback_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        try:
+            return _orig_getaddrinfo(host, port, family, type, proto, flags)
+        except socket.gaierror:
+            if isinstance(host, str) and not host.replace(".", "").isdigit():
+                try:
+                    answers = _resolver.resolve(host, "A")
+                    ip = answers[0].to_text()
+                    return _orig_getaddrinfo(ip, port, family, type, proto, flags)
+                except Exception:
+                    pass
+            raise
+
+    socket.getaddrinfo = _fallback_getaddrinfo
+except Exception:
+    pass
+
 
 class BaseConfig:
     # ── Core ──────────────────────────────────────────────────────────────
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-me-in-production")
     DEBUG: bool = False
     TESTING: bool = False
 
@@ -25,6 +53,9 @@ class BaseConfig:
         SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace(
             "postgres://", "postgresql://", 1
         )
+    if "aws-1-ap-northeast-1.pooler.supabase.com" in SQLALCHEMY_DATABASE_URI and "hostaddr=" not in SQLALCHEMY_DATABASE_URI:
+        sep = "&" if "?" in SQLALCHEMY_DATABASE_URI else "?"
+        SQLALCHEMY_DATABASE_URI = f"{SQLALCHEMY_DATABASE_URI}{sep}hostaddr=57.182.231.186"
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
     SQLALCHEMY_ENGINE_OPTIONS: dict = {
         "pool_pre_ping": True,          # reconnect on dropped connections
@@ -48,9 +79,6 @@ class BaseConfig:
     CLOUDINARY_CLOUD_NAME: str = os.getenv("CLOUDINARY_CLOUD_NAME", "")
     CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "")
     CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
-
-    # ── HuggingFace ────────────────────────────────────────────────────────────
-    HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 
     # ── CORS ──────────────────────────────────────────────────────────────
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")

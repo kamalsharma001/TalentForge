@@ -1,35 +1,56 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
 venv/
-.env
 
-# Flask
-instance/
-*.db
+# Environment files
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 
 # Node
 node_modules/
+dist/
+frontend/dist/
+build/
+.vite/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Frontend env
-frontend/.env
+# Database & Runtime
+instance/
+*.db
+*.sqlite3
 
-# Backend env
-backend/.env
+# IDE / Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
 
-# OS files
+# OS metadata
 .DS_Store
 Thumbs.db
-
-# Build
-dist/
-build/
-
-# Vite
-frontend/dist/
+ehthumbs.db
 
 # Logs
 *.log
+
+# Temporary / Backup files
+*.tmp
+*.bak
+*.old
+*.swp
+*~

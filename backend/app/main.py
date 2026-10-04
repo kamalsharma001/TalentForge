@@ -13,6 +13,7 @@ from app.routers import (
     ai_feedback,
     mock_interviews,
     practice,
+    ai_prep,
 )
 
 def create_app(config_class=None) -> FastAPI:
@@ -57,6 +58,7 @@ def create_app(config_class=None) -> FastAPI:
     app.include_router(ai_feedback.router)
     app.include_router(mock_interviews.router)
     app.include_router(practice.router)
+    app.include_router(ai_prep.router)
 
     # Health Check Endpoint
     @app.get("/health")

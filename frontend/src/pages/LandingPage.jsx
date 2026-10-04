@@ -424,7 +424,7 @@ export default function LandingPage() {
               </div>
               <span className="text-white font-display font-bold">TalentForge</span>
             </div>
-            <p className="text-xs text-forest-500">TalentForge — Interview Management Platform</p>
+            <p className="text-xs text-forest-500">TalentForge — Interview Management & Preparation</p>
           </div>
           <p className="text-sm">TalentForge © {new Date().getFullYear()} • Built for modern engineering hiring</p>
           <div className="flex gap-5 text-sm">
