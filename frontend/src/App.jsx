@@ -10,7 +10,7 @@ function PageTitleSync() {
   useEffect(() => {
     const path = location.pathname
     if (path === '/') {
-      document.title = 'TalentForge — Interview Management & Preparation'
+      document.title = 'TalentForge'
     } else if (path.startsWith('/candidate/ai-prep/questions')) {
       document.title = 'Practice Questions Studio | TalentForge'
     } else if (path.startsWith('/candidate/ai-prep/report/')) {
@@ -58,7 +58,7 @@ function PageTitleSync() {
     } else if (path.startsWith('/register')) {
       document.title = 'Create Account | TalentForge'
     } else {
-      document.title = 'TalentForge — Interview Management & Preparation'
+      document.title = 'TalentForge'
     }
   }, [location.pathname])
 
